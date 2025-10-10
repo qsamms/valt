@@ -9,11 +9,11 @@
 #include <optional>
 #include <string>
 
-extern std::map<std::string, db_entry> db;
+extern std::map<std::string, DBEntry> db;
 extern std::mutex global_mutex;
 
-std::optional<db_entry> get(const std::string& key);
-int set(const Command& cmd);
+std::optional<DBEntry> get(const std::string& key);
+int set(const Request& cmd);
 int del(const std::string& key);
-int persist(const Command& cmd);
-int expire(const Command& cmd);
+int persist(const Request& cmd);
+int expire(const Request& cmd);

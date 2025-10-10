@@ -1,25 +1,29 @@
 #pragma once
 
 #include <cstdint>
+#include <regex>
 #include <string>
 
-struct db_entry {
+const std::regex int_re(R"(^[+-]?\d+$)");
+const std::regex float_re(R"(^[+-]?\d*\.\d+([eE][+-]?\d+)?$)");
+const std::regex sci_re(R"(^[+-]?\d+([eE][+-]?\d+)$)");
+
+struct DBEntry {
     std::string value;
     int64_t expiration;
 };
 
-enum Action {
-    ACTION_SET,
-    ACTION_SETEX,
-    ACTION_GET,
-    ACTION_DELETE,
-    ACTION_PERSIST,
-    ACTION_EXPIRE,
-};
+enum class Operation { GET, SET, SETEX, DELETE, PERSIST, EXPIRE };
 
-struct Command {
-    Action action;
+struct Request {
+    Operation action;
     std::string key;
     std::string value;
     int64_t expiration;
 };
+
+const std::map<std::string, Operation> action_mapping = {{"get", Operation::GET},
+                                                         {"set", Operation::SET},
+                                                         {"setex", Operation::SETEX},
+                                                         {"persist", Operation::PERSIST},
+                                                         {"expire", Operation::EXPIRE}};

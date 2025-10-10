@@ -12,26 +12,26 @@
 #include <optional>
 #include <string>
 
-std::map<std::string, db_entry> db;
+std::map<std::string, DBEntry> db;
 std::mutex global_mutex;
 
-int set(const Command& cmd) {
+int set(const Request& req) {
     std::lock_guard<std::mutex> g(global_mutex);
-    db_entry entry;
-    entry.expiration = cmd.expiration;
-    entry.value = cmd.value;
-    db[cmd.key] = entry;
+    DBEntry entry;
+    entry.expiration = req.expiration;
+    entry.value = req.value;
+    db[req.key] = entry;
     return 1;
 }
 
-std::optional<db_entry> get(const std::string& key) {
+std::optional<DBEntry> get(const std::string& key) {
     std::lock_guard<std::mutex> g(global_mutex);
 
     auto it = db.find(key);
     if (it == db.end()) {
         return std::nullopt;
     }
-    db_entry entry = it->second;
+    DBEntry entry = it->second;
     int64_t expiration = entry.expiration;
 
     if (expiration > 0) {
@@ -52,13 +52,13 @@ int del(const std::string& key) {
     return 0;
 }
 
-int persist(const Command& cmd) {
+int persist(const Request& req) {
     std::lock_guard<std::mutex> g(global_mutex);
-    auto it = db.find(cmd.key);
+    auto it = db.find(req.key);
     if (!(it == db.end())) {
-        db_entry entry = it->second;
+        DBEntry entry = it->second;
         if (entry.expiration > 0 && seconds_since_epoch() > entry.expiration) {
-            db.erase(cmd.key);
+            db.erase(req.key);
             return 0;
         }
         entry.expiration = -1;
@@ -67,11 +67,11 @@ int persist(const Command& cmd) {
     return 0;
 }
 
-int expire(const Command& cmd) {
+int expire(const Request& req) {
     std::lock_guard<std::mutex> g(global_mutex);
-    auto it = db.find(cmd.key);
+    auto it = db.find(req.key);
     if (!(it == db.end())) {
-        it->second.expiration = cmd.expiration;
+        it->second.expiration = req.expiration;
         return 1;
     }
     return 0;

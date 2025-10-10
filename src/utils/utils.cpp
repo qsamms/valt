@@ -6,12 +6,23 @@
 #include <cstdint>
 #include <sstream>
 
+#include "exceptions.h"
+
 std::string to_lower(const std::string& str) {
     std::string out(str);
     std::transform(out.begin(), out.end(), out.begin(),
                    [](unsigned char c) { return std::tolower(c); });
     return out;
 }
+
+Operation string_to_op(const std::string& s) {
+    auto it = action_mapping.find(to_lower(s));
+    if (it == action_mapping.end()) {
+        throw InvalidCommandException("Unknown command");
+    }
+    return it->second;
+}
+
 
 std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;

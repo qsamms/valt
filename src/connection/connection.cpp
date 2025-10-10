@@ -9,107 +9,71 @@
 
 #include <chrono>
 #include <iostream>
-#include <regex>
 
-const std::regex Connection::int_re(R"(^[+-]?\d+$)");
-const std::regex Connection::float_re(R"(^[+-]?\d*\.\d+([eE][+-]?\d+)?$)");
-const std::regex Connection::sci_re(R"(^[+-]?\d+([eE][+-]?\d+)$)");
-
-Action Connection::string_to_action(const std::string& s) {
-    std::string lower = to_lower(s);
-    if (lower == "set")
-        return ACTION_SET;
-    else if (lower == "setex")
-        return ACTION_SETEX;
-    else if (lower == "get")
-        return ACTION_GET;
-    else if (lower == "del")
-        return ACTION_DELETE;
-    else if (lower == "persist")
-        return ACTION_PERSIST;
-    else if (lower == "expire")
-        return ACTION_EXPIRE;
-    else
-        throw InvalidCommandException("Unknown action");
-}
-
-void Connection::parse_and_set_expiration(Command& cmd, const std::string& expiration_str) {
-    if (!std::regex_match(expiration_str, int_re))
+int64_t Connection::parse_expiration(const std::string& expiration_str) {
+    if (!std::regex_match(expiration_str, int_re)) {
         throw InvalidCommandException("expiration must be an integer");
+    }
 
     int expiration_seconds = std::stoi(expiration_str);
-    if (expiration_seconds < 0) throw InvalidCommandException("expiration must be > 0");
+    if (expiration_seconds < 0) {
+        throw InvalidCommandException("expiration must be > 0");
+    }
 
     auto now = std::chrono::system_clock::now();
     auto seconds_since_epoch =
         std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    cmd.expiration = (int64_t)seconds_since_epoch + expiration_seconds;
+    return (int64_t)seconds_since_epoch + expiration_seconds;
 }
 
-Command Connection::parse_command(const std::string& command_str) {
-    std::vector<std::string> command_parts = split(command_str, ' ');
-    if (command_parts.size() < 2)
+Request Connection::parse_request(const std::string& req_str) {
+    std::vector<std::string> req_parts = split(req_str, ' ');
+    if (req_parts.size() < 2) {
         throw InvalidCommandException("All commands require an action and key");
-
-    Command cmd;
-    cmd.action = string_to_action(command_parts[0]);
-    cmd.key = command_parts[1];
-    cmd.value = "";
-    cmd.expiration = -1;
-
-    if (cmd.action == ACTION_SET) {
-        if (command_parts.size() != 3) throw InvalidCommandException("'set' must have 3 operands");
-        cmd.value = command_parts[2];
     }
 
-    else if (cmd.action == ACTION_SETEX) {
-        if (command_parts.size() != 4)
-            throw InvalidCommandException("'setex' must have 4 operands");
-        cmd.value = command_parts[2];
-        parse_and_set_expiration(cmd, command_parts[3]);
+    Operation operation = string_to_op(req_parts[0]);
+    switch (operation) {
+        case Operation::SET:
+            if (req_parts.size() != 3) throw InvalidCommandException("'set' must have 3 operands");
+            break;
+        case Operation::SETEX:
+            if (req_parts.size() != 4)
+                throw InvalidCommandException("'setex' must have 4 operands");
+            break;
+        case Operation::EXPIRE:
+            if (req_parts.size() != 3)
+                throw InvalidCommandException("'expire' must have 3 operands");
+            break;
     }
 
-    else if (cmd.action == ACTION_EXPIRE) {
-        if (command_parts.size() != 3)
-            throw InvalidCommandException("'expire' must have 3 operands");
-        parse_and_set_expiration(cmd, command_parts[2]);
-    }
+    return Request{.action = string_to_op(req_parts[0]),
+                   .key = req_parts[1],
+                   .value = req_parts.size() > 2 ? req_parts[2] : "",
+                   .expiration = req_parts.size() > 3 ? parse_expiration(req_parts[3]) : -1
 
-    return cmd;
+    };
 }
 
-std::string Connection::perform_command(Command& cmd) {
-    std::string key = cmd.key;
-    Action action = cmd.action;
-
-    if (action == ACTION_GET) {
-        std::optional<db_entry> entry = get(key);
-        if (!entry) return ERR_NOT_FOUND;
-        return entry.value().value + "\n";
+std::string Connection::perform_operation(const Request& req) {
+    switch (req.action) {
+        case Operation::GET: {
+            std::optional<DBEntry> entry = get(req.key);
+            return entry ? entry->value + "\n" : ERR_NOT_FOUND;
+        }
+        case Operation::SET:
+            return set(req) ? OK : ERR_UNKNOWN;
+        case Operation::SETEX:
+            return set(req) ? OK : ERR_UNKNOWN;
+        case Operation::DELETE:
+            return del(req.key) ? OK : ERR_UNKNOWN;
+        case Operation::EXPIRE:
+            return expire(req) ? OK : ERR_UNKNOWN;
+        case Operation::PERSIST:
+            return persist(req) ? OK : ERR_UNKNOWN;
+        default:
+            throw InvalidCommandException("unknown action");
     }
-
-    else if (action == ACTION_SET || action == ACTION_SETEX) {
-        if (set(cmd)) return OK;
-        return ERR_UNKNOWN;
-    }
-
-    else if (action == ACTION_DELETE) {
-        if (del(key)) return OK;
-        return ERR_NOT_FOUND;
-    }
-
-    else if (action == ACTION_EXPIRE) {
-        if (expire(cmd)) return OK;
-        return ERR_NOT_FOUND;
-    }
-
-    else if (action == ACTION_PERSIST) {
-        if (persist(cmd)) return OK;
-        return ERR_NOT_FOUND;
-    }
-
-    else
-        throw InvalidCommandException("unknown action");
 }
 
 void Connection::handle_connection(const uint32_t client_fd) {
@@ -117,13 +81,13 @@ void Connection::handle_connection(const uint32_t client_fd) {
     while (1) {
         try {
             int bytes_read = recv(client_fd, buffer, sizeof(buffer), 0);
-            if (bytes_read <= 0) break;  // exit if client terminates connection
+            if (bytes_read <= 0) break;
 
-            uint16_t cmd_str_size = bytes_read;
-            if (buffer[bytes_read - 1] == '\n') cmd_str_size--;
+            uint16_t req_size = bytes_read;
+            if (buffer[bytes_read - 1] == '\n') req_size--;
 
-            Command cmd = parse_command(std::string(buffer, cmd_str_size));
-            std::string response = perform_command(cmd);
+            Request req = parse_request(std::string(buffer, req_size));
+            std::string response = perform_operation(req);
             send(client_fd, response.c_str(), response.size(), 0);
 
         } catch (InvalidCommandException& e) {
