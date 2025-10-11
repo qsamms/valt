@@ -50,9 +50,7 @@ Request Connection::parse_request(const std::string& req_str) {
     return Request{.action = string_to_op(req_parts[0]),
                    .key = req_parts[1],
                    .value = req_parts.size() > 2 ? req_parts[2] : "",
-                   .expiration = req_parts.size() > 3 ? parse_expiration(req_parts[3]) : -1
-
-    };
+                   .expiration = req_parts.size() > 3 ? parse_expiration(req_parts[3]) : -1};
 }
 
 std::string Connection::perform_operation(const Request& req) {

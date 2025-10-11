@@ -23,7 +23,6 @@ Operation string_to_op(const std::string& s) {
     return it->second;
 }
 
-
 std::vector<std::string> split(const std::string& s, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
