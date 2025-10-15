@@ -2,11 +2,11 @@
 
 #include <arpa/inet.h>
 #include <db/db.h>
+#include <ev.h>
 #include <unistd.h>
 #include <utils/exceptions.h>
 #include <utils/response_codes.h>
 #include <utils/utils.h>
-#include <ev.h>
 
 #include <chrono>
 #include <iostream>
@@ -78,7 +78,7 @@ std::string TaskHandler::perform_op(const Command& cmd) {
 Task TaskHandler::handle_task(const Task task) {
     Command r = parse_request(task.content);
     std::string result = perform_op(r);
-    return Task {
+    return Task{
         .client_fd = task.client_fd,
         .content = std::move(result),
     };

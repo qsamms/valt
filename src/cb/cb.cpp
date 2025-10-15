@@ -1,22 +1,21 @@
 #include "cb.h"
+
 #include <arpa/inet.h>
 #include <cb/cb.h>
 #include <db/db.h>
 #include <ev.h>
 #include <utils/utils.h>
 
-
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
     if (revents & EV_WRITE) {
         // write to client socket
-
     }
 }
 
 void client_read_cb(EV_P_ ev_io* watcher, int revents) {
     char buffer[1024];
     if (revents & EV_READ) {
-        // TODO: if not all data is read, save the state and return 
+        // TODO: if not all data is read, save the state and return
         int bytes_read = recv(watcher->fd, buffer, sizeof(buffer), 0);
         if (bytes_read <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -34,8 +33,6 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             .client_fd = watcher->fd,
             .content = std::string(buffer, req_size),
         };
-        
-
     }
 }
 
