@@ -76,6 +76,10 @@ std::string TaskHandler::perform_op(const Command& cmd) {
 }
 
 std::string TaskHandler::handle_task(const Task task) {
-    Command r = parse_request(task.content);
-    return perform_op(r);
+    try {
+        Command r = parse_request(task.content);
+        return perform_op(r);
+    } catch (std::exception& e) {
+        return std::string(e.what());
+    }
 }

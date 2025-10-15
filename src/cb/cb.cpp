@@ -31,6 +31,7 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
             return;
         }
 
+        if (bytes_sent > content.size()) bytes_sent--;
         content = content.substr(bytes_sent);
 
         if (content.empty()) {
