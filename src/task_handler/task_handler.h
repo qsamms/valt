@@ -13,5 +13,7 @@ class TaskHandler {
     Command parse_request(const std::string& req_str);
     int64_t parse_expiration(const std::string& expiration_str);
     std::string perform_op(const Command& req);
-    Task handle_task(const Task task);
+
+   public:
+    std::string handle_task(const Task task);
 };

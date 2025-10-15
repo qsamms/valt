@@ -75,11 +75,7 @@ std::string TaskHandler::perform_op(const Command& cmd) {
     }
 }
 
-Task TaskHandler::handle_task(const Task task) {
+std::string TaskHandler::handle_task(const Task task) {
     Command r = parse_request(task.content);
-    std::string result = perform_op(r);
-    return Task{
-        .client_fd = task.client_fd,
-        .content = std::move(result),
-    };
+    return perform_op(r);
 }
