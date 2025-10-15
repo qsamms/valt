@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <fcntl.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -7,6 +9,9 @@
 #include <sstream>
 
 #include "exceptions.h"
+#include "types.h"
+
+using RuntimeError = std::runtime_error;
 
 std::string to_lower(const std::string& str) {
     std::string out(str);
@@ -16,8 +21,8 @@ std::string to_lower(const std::string& str) {
 }
 
 Operation string_to_op(const std::string& s) {
-    auto it = action_mapping.find(to_lower(s));
-    if (it == action_mapping.end()) {
+    auto it = op_mapping.find(to_lower(s));
+    if (it == op_mapping.end()) {
         throw InvalidCommandException("Unknown command");
     }
     return it->second;
@@ -38,4 +43,10 @@ std::vector<std::string> split(const std::string& s, char delimiter) {
 uint64_t seconds_since_epoch() {
     auto now = std::chrono::system_clock::now();
     return duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
+}
+
+void set_nonblocking(int fd) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags == -1) throw RuntimeError("set nonblocking failed");
+    if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) throw RuntimeError("set nonblocking failed");
 }

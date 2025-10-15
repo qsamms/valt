@@ -18,3 +18,5 @@ SpacesInParentheses: false
 SpacesInAngles: false
 
 DerivePointerAlignment: false
+
+InsertNewlineAtEOF: true
