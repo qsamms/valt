@@ -50,3 +50,30 @@ void set_nonblocking(int fd) {
     if (flags == -1) throw RuntimeError("set nonblocking failed");
     if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) throw RuntimeError("set nonblocking failed");
 }
+
+std::string escape_string(const std::string& s) {
+    std::string result;
+    for (char c : s) {
+        switch (c) {
+            case '\n':
+                result += "\\n";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\\':
+                result += "\\\\";
+                break;
+            case '\"':
+                result += "\\\"";
+                break;
+            default:
+                result += c;
+                break;
+        }
+    }
+    return result;
+}

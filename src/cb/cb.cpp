@@ -7,6 +7,9 @@
 #include <task_handler/task_handler.h>
 #include <utils/utils.h>
 
+#include <iomanip>
+#include <iostream>
+
 std::unordered_map<int, std::string> reads;
 std::unordered_map<int, std::string> writes;
 
@@ -70,6 +73,8 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
 
         uint16_t req_size = bytes_read;
         if (buffer[req_size - 1] == '\n') {
+            std::cout << "[packet: (" << escape_string(std::string(buffer, bytes_read)) << ")]"
+                      << std::endl;
             TaskHandler th;
             std::string content;
 
@@ -77,6 +82,9 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
                 content = reads[watcher->fd] + std::string(buffer, --req_size);
             else
                 content = std::string(buffer, --req_size);
+
+            std::cout << "[full content: (" << escape_string(std::string(content.c_str())) << ")]"
+                      << std::endl;
 
             reads.erase(watcher->fd);
             Task task = Task{
@@ -89,12 +97,14 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
             ev_io_start(EV_DEFAULT, write_watcher);
         } else {
+            std::cout << "[packet: (" << escape_string(std::string(buffer, bytes_read)) << ")]"
+                      << std::endl;
             // Add the new content to the in-progress read
             if (!reads.contains(watcher->fd))
-                reads[watcher->fd] = std::string(buffer);
+                reads[watcher->fd] = std::string(buffer, bytes_read);
             else {
                 std::string cur = reads[watcher->fd];
-                reads[watcher->fd] = cur + std::string(buffer);
+                reads[watcher->fd] = cur + std::string(buffer, bytes_read);
             }
         }
     }

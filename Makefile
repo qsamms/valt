@@ -1,6 +1,7 @@
 .PHONY: format
 format:
 	git ls-files '*.cpp' '*.h' | xargs clang-format -i
+	black test/python
 
 .PHONY: test-python
 test-python:
