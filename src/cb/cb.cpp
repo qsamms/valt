@@ -10,18 +10,25 @@
 std::map<int, std::string> reads;
 std::map<int, std::string> writes;
 
+void cleanup_watcher(EV_P_ ev_io* watcher, int read) {
+    if (read) {
+        reads.erase(watcher->fd);
+    } else {
+        writes.erase(watcher->fd);
+    }
+    ev_io_stop(EV_A_ watcher);
+    delete watcher;
+}
+
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
     if (revents & EV_WRITE) {
-        auto it = writes.find(watcher->fd);
-        if (it == writes.end()) {
-            writes.erase(watcher->fd);
-            ev_io_stop(EV_A_ watcher);
-            delete watcher;
+        if (!writes.contains(watcher->fd)) {
+            cleanup_watcher(EV_A_ watcher, 0);
             return;
         }
         std::string content = writes[watcher->fd];
 
-        int bytes_sent = send(watcher->fd, content.c_str(), content.size() + 1, 0);
+        int bytes_sent = send(watcher->fd, content.c_str(), content.size(), 0);
         if (bytes_sent <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
             writes.erase(watcher->fd);
@@ -31,14 +38,9 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
             return;
         }
 
-        if (bytes_sent > content.size()) bytes_sent--;
         content = content.substr(bytes_sent);
 
-        if (content.empty()) {
-            writes.erase(watcher->fd);
-            ev_io_stop(EV_A_ watcher);
-            delete watcher;
-        }
+        if (content.empty()) cleanup_watcher(EV_A_ watcher, 0);
     }
 }
 
@@ -48,40 +50,35 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         int bytes_read = recv(watcher->fd, buffer, sizeof(buffer), 0);
         if (bytes_read <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-            reads.erase(watcher->fd);
-            ev_io_stop(EV_A_ watcher);
-            close(watcher->fd);
-            delete watcher;
+            cleanup_watcher(EV_A_ watcher, 1);
             return;
         }
 
         uint16_t req_size = bytes_read;
         if (buffer[req_size - 1] == '\n') {
-            // Reached a newline, process the request
+            TaskHandler th;
             std::string content;
-            auto it = reads.find(watcher->fd);
-            if (it == reads.end()) {
+
+            if (reads.contains(watcher->fd))
                 content = std::string(buffer, --req_size);
-            } else {
+            else
                 content = reads[watcher->fd] + std::string(buffer, --req_size);
-            }
+
             reads.erase(watcher->fd);
             Task task = Task{
                 .client_fd = watcher->fd,
                 .content = content,
             };
-            TaskHandler th;
             writes[watcher->fd] = th.handle_task(task);
 
             ev_io* write_watcher = new ev_io;
             ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
             ev_io_start(EV_DEFAULT, write_watcher);
         } else {
-            // add new content to in_progress string
-            auto it = reads.find(watcher->fd);
-            if (it == reads.end()) {
+            // Add the new content to the in-progress read
+            if (!reads.contains(watcher->fd))
                 reads[watcher->fd] = std::string(buffer);
-            } else {
+            else {
                 std::string cur = reads[watcher->fd];
                 reads[watcher->fd] = cur + std::string(buffer);
             }

@@ -20,11 +20,8 @@ int64_t TaskHandler::parse_expiration(const std::string& expiration_str) {
     if (expiration_seconds < 0) {
         throw InvalidCommandException("expiration must be > 0");
     }
-
-    auto now = std::chrono::system_clock::now();
-    auto seconds_since_epoch =
-        std::chrono::duration_cast<std::chrono::seconds>(now.time_since_epoch()).count();
-    return (int64_t)seconds_since_epoch + expiration_seconds;
+    
+    return (int64_t) seconds_since_epoch() + expiration_seconds;
 }
 
 Command TaskHandler::parse_request(const std::string& s) {
