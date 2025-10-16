@@ -50,9 +50,11 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
         }
 
         content = content.substr(bytes_sent);
-
         if (content.empty())
             cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::KEEPALIVE);
+        else {
+            writes[watcher->fd] = content;
+        }
     }
 }
 
