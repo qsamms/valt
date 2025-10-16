@@ -27,7 +27,7 @@ int64_t TaskHandler::parse_expiration(const std::string& expiration_str) {
 Command TaskHandler::parse_request(const std::string& s) {
     std::vector<std::string> cmd_parts = split(s, ' ');
     if (cmd_parts.size() < 2) {
-        throw InvalidCommandException("All commands cuire an action and key");
+        throw InvalidCommandException("All commands require an action and key");
     }
 
     Operation operation = string_to_op(cmd_parts[0]);
