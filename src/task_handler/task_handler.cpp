@@ -31,24 +31,32 @@ Command TaskHandler::parse_request(const std::string& s) {
     }
 
     Operation operation = string_to_op(cmd_parts[0]);
+    std::string key = cmd_parts[1];
+    std::string value = "";
+    int64_t expiration = -1;
+
     switch (operation) {
         case Operation::SET:
             if (cmd_parts.size() != 3) throw InvalidCommandException("'set' must have 3 operands");
+            value = cmd_parts[2];
             break;
         case Operation::SETEX:
             if (cmd_parts.size() != 4)
                 throw InvalidCommandException("'setex' must have 4 operands");
+            value = cmd_parts[2];
+            expiration = parse_expiration(cmd_parts[3]);
             break;
         case Operation::EXPIRE:
             if (cmd_parts.size() != 3)
                 throw InvalidCommandException("'expire' must have 3 operands");
+            expiration = parse_expiration(cmd_parts[2]);
             break;
     }
 
     return Command{.op = operation,
-                   .key = cmd_parts[1],
-                   .value = cmd_parts.size() > 2 ? cmd_parts[2] : "",
-                   .expiration = cmd_parts.size() > 3 ? parse_expiration(cmd_parts[3]) : -1};
+                   .key = key,
+                   .value = value,
+                   .expiration = expiration};
 }
 
 std::string TaskHandler::perform_op(const Command& cmd) {
