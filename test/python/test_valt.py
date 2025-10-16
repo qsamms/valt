@@ -2,7 +2,6 @@ import unittest
 import socket
 import subprocess
 import time
-import sys
 
 HOST = "127.0.0.1"
 PORT = 9999
@@ -34,7 +33,9 @@ class TestValt(unittest.TestCase):
         self.valt_out.close()
 
     def setUp(self):
-        self.valt_out.write(f"\nTest: {self._testMethodName} ---------------------------\n")
+        self.valt_out.write(
+            f"\nTest: {self._testMethodName} ---------------------------\n"
+        )
         self.valt_out.flush()
 
     def test_set_get(self):
@@ -53,7 +54,7 @@ class TestValt(unittest.TestCase):
             s.sendall(b"set ")
             with self.assertRaises(BlockingIOError):
                 s.recv(1024)
-            time.sleep(1) # wait between to ensure segments don't get grouped
+            time.sleep(1)  # wait between to ensure segments don't get grouped
             s.sendall(b"key")
             with self.assertRaises(BlockingIOError):
                 s.recv(1024)
@@ -65,4 +66,4 @@ class TestValt(unittest.TestCase):
 
             s.sendall(b"get key\n")
             reply = s.recv(1024)
-            self.assertEqual(reply, b'10\n')
+            self.assertEqual(reply, b"10\n")
