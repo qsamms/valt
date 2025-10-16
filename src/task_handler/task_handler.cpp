@@ -53,10 +53,7 @@ Command TaskHandler::parse_request(const std::string& s) {
             break;
     }
 
-    return Command{.op = operation,
-                   .key = key,
-                   .value = value,
-                   .expiration = expiration};
+    return Command{.op = operation, .key = key, .value = value, .expiration = expiration};
 }
 
 std::string TaskHandler::perform_op(const Command& cmd) {

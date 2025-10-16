@@ -74,9 +74,9 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             std::string content;
 
             if (reads.contains(watcher->fd))
-                content = std::string(buffer, --req_size);
-            else
                 content = reads[watcher->fd] + std::string(buffer, --req_size);
+            else
+                content = std::string(buffer, --req_size);
 
             reads.erase(watcher->fd);
             Task task = Task{
