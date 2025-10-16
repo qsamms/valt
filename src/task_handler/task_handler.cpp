@@ -20,8 +20,8 @@ int64_t TaskHandler::parse_expiration(const std::string& expiration_str) {
     if (expiration_seconds < 0) {
         throw InvalidCommandException("expiration must be > 0");
     }
-    
-    return (int64_t) seconds_since_epoch() + expiration_seconds;
+
+    return (int64_t)seconds_since_epoch() + expiration_seconds;
 }
 
 Command TaskHandler::parse_request(const std::string& s) {

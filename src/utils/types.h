@@ -22,10 +22,10 @@ struct Command {
 };
 
 const std::unordered_map<std::string, Operation> op_mapping = {{"get", Operation::GET},
-                                                     {"set", Operation::SET},
-                                                     {"setex", Operation::SETEX},
-                                                     {"persist", Operation::PERSIST},
-                                                     {"expire", Operation::EXPIRE}};
+                                                               {"set", Operation::SET},
+                                                               {"setex", Operation::SETEX},
+                                                               {"persist", Operation::PERSIST},
+                                                               {"expire", Operation::EXPIRE}};
 
 struct Task {
     int client_fd;

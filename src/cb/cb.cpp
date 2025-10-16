@@ -10,20 +10,34 @@
 std::unordered_map<int, std::string> reads;
 std::unordered_map<int, std::string> writes;
 
-void cleanup_watcher(EV_P_ ev_io* watcher, int read) {
-    if (read) {
-        reads.erase(watcher->fd);
-    } else {
-        writes.erase(watcher->fd);
+enum class ConnectionPolicy {
+    CLOSE,
+    KEEPALIVE,
+};
+
+enum class WatcherType {
+    READ,
+    WRITE,
+};
+
+void cleanup_watcher(EV_P_ ev_io* watcher, WatcherType wt, ConnectionPolicy policy) {
+    switch (wt) {
+        case WatcherType::READ:
+            reads.erase(watcher->fd);
+            break;
+        case WatcherType::WRITE:
+            writes.erase(watcher->fd);
+            break;
     }
     ev_io_stop(EV_A_ watcher);
+    if (policy == ConnectionPolicy::CLOSE) close(watcher->fd);
     delete watcher;
 }
 
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
     if (revents & EV_WRITE) {
         if (!writes.contains(watcher->fd)) {
-            cleanup_watcher(EV_A_ watcher, 0);
+            cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::KEEPALIVE);
             return;
         }
         std::string content = writes[watcher->fd];
@@ -31,16 +45,14 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
         int bytes_sent = send(watcher->fd, content.c_str(), content.size(), 0);
         if (bytes_sent <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-            writes.erase(watcher->fd);
-            ev_io_stop(EV_A_ watcher);
-            close(watcher->fd);
-            delete watcher;
+            cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::CLOSE);
             return;
         }
 
         content = content.substr(bytes_sent);
 
-        if (content.empty()) cleanup_watcher(EV_A_ watcher, 0);
+        if (content.empty())
+            cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::KEEPALIVE);
     }
 }
 
@@ -50,7 +62,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         int bytes_read = recv(watcher->fd, buffer, sizeof(buffer), 0);
         if (bytes_read <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-            cleanup_watcher(EV_A_ watcher, 1);
+            cleanup_watcher(EV_A_ watcher, WatcherType::READ, ConnectionPolicy::CLOSE);
             return;
         }
 
