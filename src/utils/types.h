@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <regex>
 #include <string>
+#include <unordered_map>
 
 const std::regex int_re(R"(^[+-]?\d+$)");
 
@@ -20,7 +21,7 @@ struct Command {
     int64_t expiration;
 };
 
-const std::map<std::string, Operation> op_mapping = {{"get", Operation::GET},
+const std::unordered_map<std::string, Operation> op_mapping = {{"get", Operation::GET},
                                                      {"set", Operation::SET},
                                                      {"setex", Operation::SETEX},
                                                      {"persist", Operation::PERSIST},

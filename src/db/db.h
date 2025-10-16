@@ -3,13 +3,13 @@
 #include <utils/types.h>
 
 #include <ctime>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
 
-extern std::map<std::string, DBEntry> db;
+extern std::unordered_map<std::string, DBEntry> db;
 
 std::optional<DBEntry> get(const std::string& key);
 int set(const Command& cmd);

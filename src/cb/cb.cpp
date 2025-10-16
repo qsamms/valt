@@ -7,8 +7,8 @@
 #include <task_handler/task_handler.h>
 #include <utils/utils.h>
 
-std::map<int, std::string> reads;
-std::map<int, std::string> writes;
+std::unordered_map<int, std::string> reads;
+std::unordered_map<int, std::string> writes;
 
 void cleanup_watcher(EV_P_ ev_io* watcher, int read) {
     if (read) {

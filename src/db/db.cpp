@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-std::map<std::string, DBEntry> db;
+std::unordered_map<std::string, DBEntry> db;
 
 int set(const Command& req) {
     DBEntry entry;
