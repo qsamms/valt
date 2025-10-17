@@ -3,7 +3,6 @@
 #include <fcntl.h>
 
 #include <algorithm>
-#include <cctype>
 #include <chrono>
 #include <cstdint>
 #include <sstream>

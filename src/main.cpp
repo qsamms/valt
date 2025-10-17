@@ -1,16 +1,7 @@
 #include <arpa/inet.h>
 #include <cb/cb.h>
-#include <db/db.h>
 #include <ev.h>
-#include <sys/socket.h>
-#include <unistd.h>
 #include <utils/utils.h>
-
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <thread>
-#include <vector>
 
 #define SERVER_PORT 9999
 #define MAX_PENDING_CONNECTIONS 10

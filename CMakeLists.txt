@@ -9,7 +9,6 @@ add_executable(
     src/cb/cb.cpp
     src/db/db.cpp
     src/main.cpp 
-    src/utils/response_codes.cpp
     src/task_handler/task_handler.cpp
     src/utils/utils.cpp
 )

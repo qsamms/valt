@@ -1,9 +1,6 @@
 #include "task_handler.h"
 
-#include <arpa/inet.h>
 #include <db/db.h>
-#include <ev.h>
-#include <unistd.h>
 #include <utils/exceptions.h>
 #include <utils/response_codes.h>
 #include <utils/utils.h>

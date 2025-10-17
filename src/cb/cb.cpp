@@ -2,12 +2,9 @@
 
 #include <arpa/inet.h>
 #include <cb/cb.h>
-#include <db/db.h>
-#include <ev.h>
 #include <task_handler/task_handler.h>
 #include <utils/utils.h>
 
-#include <iomanip>
 #include <iostream>
 
 std::unordered_map<int, std::string> reads;
