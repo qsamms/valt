@@ -67,3 +67,19 @@ class TestValt(unittest.TestCase):
         reply = sock.recv(1024)
         self.assertEqual(reply, b"10\n")
 
+    def test_delete(self, sock):
+        sock.sendall(b"set key 10\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        sock.sendall(b"get key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"10\n")
+
+        sock.sendall(b"delete key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        sock.sendall(b"get key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"ERR: key not found\n")

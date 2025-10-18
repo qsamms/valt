@@ -21,11 +21,9 @@ struct Command {
     int64_t expiration;
 };
 
-const std::unordered_map<std::string, Operation> op_mapping = {{"get", Operation::GET},
-                                                               {"set", Operation::SET},
-                                                               {"setex", Operation::SETEX},
-                                                               {"persist", Operation::PERSIST},
-                                                               {"expire", Operation::EXPIRE}};
+const std::unordered_map<std::string, Operation> op_mapping = {
+    {"get", Operation::GET},         {"set", Operation::SET},       {"setex", Operation::SETEX},
+    {"persist", Operation::PERSIST}, {"expire", Operation::EXPIRE}, {"delete", Operation::DELETE}};
 
 struct Task {
     int client_fd;
