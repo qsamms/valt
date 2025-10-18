@@ -36,12 +36,12 @@ int del(const std::string& key) {
     return 0;
 }
 
-int persist(const Command& req) {
-    auto it = db.find(req.key);
-    if (!(it == db.end())) {
+int persist(const Command& cmd) {
+    auto it = db.find(cmd.key);
+    if (it != db.end()) {
         DBEntry entry = it->second;
         if (entry.expiration > 0 && seconds_since_epoch() > entry.expiration) {
-            db.erase(req.key);
+            db.erase(cmd.key);
             return 0;
         }
         entry.expiration = -1;
@@ -50,11 +50,16 @@ int persist(const Command& req) {
     return 0;
 }
 
-int expire(const Command& req) {
-    auto it = db.find(req.key);
-    if (!(it == db.end())) {
-        it->second.expiration = req.expiration;
+int expire(const Command& cmd) {
+    auto it = db.find(cmd.key);
+    if (it != db.end()) {
+        it->second.expiration = cmd.expiration;
         return 1;
     }
     return 0;
+}
+
+int flush(const Command& cmd) {
+    std::unordered_map<std::string, DBEntry>().swap(db);
+    return 1;
 }

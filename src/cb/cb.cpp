@@ -84,11 +84,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
                       << std::endl;
 
             reads.erase(watcher->fd);
-            Task task = Task{
-                .client_fd = watcher->fd,
-                .content = content,
-            };
-            writes[watcher->fd] = th.handle_task(task);
+            writes[watcher->fd] = th.handle_task(content);
 
             ev_io* write_watcher = new ev_io;
             ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);

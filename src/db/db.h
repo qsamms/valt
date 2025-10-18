@@ -16,3 +16,4 @@ int set(const Command& cmd);
 int del(const std::string& key);
 int persist(const Command& cmd);
 int expire(const Command& cmd);
+int flush(const Command& cmd);

@@ -1,44 +1,10 @@
-import unittest
-import socket
-import subprocess
 import time
-from test.python.utils import valt_test_class
 
-HOST = "127.0.0.1"
-PORT = 9999
-SERVER_EXECUTABLE_PATH = "build/valt"
+from test.python.valt_test import ValtTestCase, valt_test_class
 
-@valt_test_class(HOST, PORT)
-class TestValt(unittest.TestCase):
-    @classmethod
-    def setUpClass(self):
-        self.valt_out = open("valt.out", "w")
-        self.proc = subprocess.Popen(
-            [SERVER_EXECUTABLE_PATH],
-            stdout=self.valt_out,
-            stderr=subprocess.STDOUT,
-        )
-        for _ in range(10):
-            try:
-                with socket.create_connection((HOST, PORT), timeout=0.5):
-                    break
-            except (ConnectionRefusedError, socket.timeout):
-                time.sleep(1)
-        else:
-            self.proc.kill()
-            raise RuntimeError("Server failed to start")
 
-    @classmethod
-    def tearDownClass(self):
-        self.proc.kill()
-        self.valt_out.close()
-
-    def setUp(self):
-        self.valt_out.write(
-            f"\nTest: {self._testMethodName} ---------------------------\n"
-        )
-        self.valt_out.flush()
-
+@valt_test_class()
+class TestCommands(ValtTestCase):
     def test_set_get(self, sock):
         sock.sendall(b"set key 10\n")
         reply = sock.recv(1024)
@@ -83,3 +49,40 @@ class TestValt(unittest.TestCase):
         sock.sendall(b"get key\n")
         reply = sock.recv(1024)
         self.assertEqual(reply, b"ERR: key not found\n")
+
+    def test_expire(self, sock):
+        sock.sendall(b"set key 10\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        sock.sendall(b"expire key 1\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        expired = False
+        for i in range(10):
+            sock.sendall(b"get key\n")
+            reply = sock.recv(1024)
+            if reply == b"ERR: key not found\n":
+                expired = True
+                break
+            time.sleep(1)
+        self.assertTrue(expired)
+
+    def test_persist(self, sock):
+        sock.sendall(b"set key 10\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        sock.sendall(b"expire key 3\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        sock.sendall(b"persist key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
+
+        time.sleep(3)
+        sock.sendall(b"get key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"10\n")
