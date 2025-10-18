@@ -2,12 +2,13 @@ import unittest
 import socket
 import subprocess
 import time
+from test.python.utils import valt_test_class
 
 HOST = "127.0.0.1"
 PORT = 9999
 SERVER_EXECUTABLE_PATH = "build/valt"
 
-
+@valt_test_class(HOST, PORT)
 class TestValt(unittest.TestCase):
     @classmethod
     def setUpClass(self):
@@ -38,32 +39,31 @@ class TestValt(unittest.TestCase):
         )
         self.valt_out.flush()
 
-    def test_set_get(self):
-        with socket.create_connection((HOST, PORT)) as s:
-            s.sendall(b"set key 10\n")
-            reply = s.recv(1024)
-            self.assertEqual(reply, b"OK\n")
+    def test_set_get(self, sock):
+        sock.sendall(b"set key 10\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
 
-            s.sendall(b"get key\n")
-            reply = s.recv(1024)
-            self.assertEqual(reply, b"10\n")
+        sock.sendall(b"get key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"10\n")
 
-    def test_split_segments(self):
-        with socket.create_connection((HOST, PORT)) as s:
-            s.setblocking(False)
-            s.sendall(b"set ")
-            with self.assertRaises(BlockingIOError):
-                s.recv(1024)
-            time.sleep(1)  # wait between to ensure segments don't get grouped
-            s.sendall(b"key")
-            with self.assertRaises(BlockingIOError):
-                s.recv(1024)
-            time.sleep(1)
-            s.sendall(b" 10\n")
-            s.setblocking(True)
-            reply = s.recv(1024)
-            self.assertEqual(reply, b"OK\n")
+    def test_split_segments(self, sock):
+        sock.setblocking(False)
+        sock.sendall(b"set ")
+        with self.assertRaises(BlockingIOError):
+            sock.recv(1024)
+        time.sleep(1)  # wait between to ensure segments don't get grouped
+        sock.sendall(b"key")
+        with self.assertRaises(BlockingIOError):
+            sock.recv(1024)
+        time.sleep(1)
+        sock.sendall(b" 10\n")
+        sock.setblocking(True)
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"OK\n")
 
-            s.sendall(b"get key\n")
-            reply = s.recv(1024)
-            self.assertEqual(reply, b"10\n")
+        sock.sendall(b"get key\n")
+        reply = sock.recv(1024)
+        self.assertEqual(reply, b"10\n")
+
