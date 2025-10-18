@@ -7,6 +7,8 @@
 
 #include <iostream>
 
+#include "spdlog/spdlog.h"
+
 std::unordered_map<int, std::string> reads;
 std::unordered_map<int, std::string> writes;
 
@@ -70,8 +72,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
 
         uint16_t req_size = bytes_read;
         if (buffer[req_size - 1] == '\n') {
-            std::cout << "[packet: (" << escape_string(std::string(buffer, bytes_read)) << ")]"
-                      << std::endl;
+            spdlog::debug("[packet: ({})]", escape_string(std::string(buffer, bytes_read)));
             TaskHandler th;
             std::string content;
 
@@ -80,8 +81,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             else
                 content = std::string(buffer, --req_size);
 
-            std::cout << "[full content: (" << escape_string(std::string(content.c_str())) << ")]"
-                      << std::endl;
+            spdlog::debug("[full content: ({})]", escape_string(std::string(content.c_str())));
 
             reads.erase(watcher->fd);
             writes[watcher->fd] = th.handle_task(content);
@@ -90,8 +90,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
             ev_io_start(EV_DEFAULT, write_watcher);
         } else {
-            std::cout << "[packet: (" << escape_string(std::string(buffer, bytes_read)) << ")]"
-                      << std::endl;
+            spdlog::debug("[packet: ({})]", escape_string(std::string(buffer, bytes_read)));
             // Add the new content to the in-progress read
             if (!reads.contains(watcher->fd))
                 reads[watcher->fd] = std::string(buffer, bytes_read);
@@ -109,7 +108,7 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         socklen_t addrlen = sizeof(address);
         int client_fd = accept(watcher->fd, (struct sockaddr*)&address, &addrlen);
         if (client_fd == -1) {
-            printf("Failed to accept connection\n");
+            spdlog::debug("Failed to accept connection");
             return;
         }
         set_nonblocking(client_fd);
@@ -117,7 +116,7 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
         int client_port = ntohs(address.sin_port);
-        printf("Accepted connection from %s:%d\n", client_ip, client_port);
+        spdlog::debug("Accepted connection from: {}", client_ip);
 
         struct ev_loop* loop = EV_DEFAULT;
         ev_io* client_watcher = new ev_io;

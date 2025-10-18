@@ -36,12 +36,7 @@ def valt_test_class():
 class ValtTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.valt_out = open("valt.out", "w")
-        self.proc = subprocess.Popen(
-            [SERVER_EXECUTABLE_PATH],
-            stdout=self.valt_out,
-            stderr=subprocess.STDOUT,
-        )
+        self.proc = subprocess.Popen([SERVER_EXECUTABLE_PATH])
         for _ in range(10):
             try:
                 with socket.create_connection((HOST, PORT), timeout=0.5):
@@ -55,10 +50,3 @@ class ValtTestCase(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         self.proc.kill()
-        self.valt_out.close()
-
-    def setUp(self):
-        self.valt_out.write(
-            f"\nTest: {self._testMethodName} ---------------------------\n"
-        )
-        self.valt_out.flush()

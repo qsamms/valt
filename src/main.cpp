@@ -3,6 +3,11 @@
 #include <ev.h>
 #include <utils/utils.h>
 
+#include <iostream>
+
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/spdlog.h"
+
 #define SERVER_PORT 9999
 #define MAX_PENDING_CONNECTIONS 10
 #define MAX_CONCURRENT_CONNECTIONS 10000
@@ -10,6 +15,15 @@
 using RuntimeError = std::runtime_error;
 
 int main(int argc, char* argv[]) {
+    try {
+        auto logger = spdlog::stdout_color_mt("console");
+        logger->flush_on(spdlog::level::info);
+        spdlog::set_default_logger(logger);
+        spdlog::set_level(spdlog::level::info);
+    } catch (const spdlog::spdlog_ex& ex) {
+        std::cout << "Log initialization failed: " << ex.what() << std::endl;
+    }
+
     struct sockaddr_in address;
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
