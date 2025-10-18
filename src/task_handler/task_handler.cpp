@@ -6,8 +6,8 @@
 #include <utils/utils.h>
 
 #include <chrono>
-#include <iostream>
 #include <cstdlib>
+#include <iostream>
 
 int64_t TaskHandler::parse_expiration(const std::string& expiration) {
     if (!std::regex_match(expiration, int_re)) {
