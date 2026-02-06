@@ -49,7 +49,7 @@ std::string TaskHandler::perform_op(const Command& cmd) {
     switch (cmd.op) {
         case Operation::GET: {
             std::optional<DBEntry> maybe_entry = get(cmd.key);
-            return maybe_entry ? maybe_entry->value + "\n" : ERR_NOT_FOUND;
+            return maybe_entry ? maybe_entry->value : ERR_NOT_FOUND;
         }
         case Operation::SET:
             return set(cmd) ? OK : ERR_UNKNOWN;

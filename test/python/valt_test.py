@@ -16,18 +16,45 @@ class ValtTestCase(unittest.TestCase):
         cls.proc = subprocess.Popen([SERVER_EXECUTABLE_PATH])
         for _ in range(10):
             try:
-                cls.sock = socket.create_connection((HOST, PORT), timeout=0.5)
-                break
+                with socket.create_connection((HOST, PORT), timeout=0.5):
+                    break
             except (ConnectionRefusedError, socket.timeout):
                 time.sleep(1)
         else:
             cls.proc.kill()
             raise RuntimeError("Server failed to start")
 
+    def sendall(self, message: str, includePrefix=True):
+        message_bytes = message.encode("utf-8")
+        length_bytes = struct.pack(">I", len(message_bytes))
+        self.sock.sendall(length_bytes + message_bytes if includePrefix else message_bytes)
+
+    def recv_str(self) -> str:
+        length_bytes = b""
+        while len(length_bytes) < 4:
+            chunk = self.sock.recv(4 - len(length_bytes))
+            if not chunk:
+                raise ConnectionError("Socket closed while reading length prefix")
+            length_bytes += chunk
+
+        message_length = struct.unpack(">I", length_bytes)[0]
+
+        data = b""
+        while len(data) < message_length:
+            chunk = self.sock.recv(message_length - len(data))
+            if not chunk:
+                raise ConnectionError("Socket closed while reading message")
+            data += chunk
+
+        return data.decode("utf-8")
+    
+    def setUp(self):
+        self.sock = socket.create_connection((HOST, PORT), timeout=0.5)
+
     def tearDown(self):
-        message = "flush".encode("utf-8")
-        length = struct.pack(">I", len(message))
-        self.sock.sendall(length + message)
+        self.sendall("flush")
+        self.recv_str()
+        self.sock.close()
 
     @classmethod
     def tearDownClass(cls):

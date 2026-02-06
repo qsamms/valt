@@ -5,8 +5,6 @@
 #include <task_handler/task_handler.h>
 #include <utils/utils.h>
 
-#include <iostream>
-
 #include "spdlog/spdlog.h"
 
 struct read_data {
@@ -47,8 +45,8 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
             cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::KEEPALIVE);
             return;
         }
-        std::string content = writes[watcher->fd];
 
+        std::string& content = writes[watcher->fd];
         int bytes_sent = send(watcher->fd, content.c_str(), content.size(), 0);
         if (bytes_sent <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
@@ -59,8 +57,6 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
         content = content.substr(bytes_sent);
         if (content.empty()) {
             cleanup_watcher(EV_A_ watcher, WatcherType::WRITE, ConnectionPolicy::KEEPALIVE);
-        } else {
-            writes[watcher->fd] = content;
         }
     }
 }
@@ -81,17 +77,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
                 memcpy(&message_length, buffer, 4);
                 message_length = ntohl(message_length);
                 std::string message = std::string(buffer + 4, bytes_read - 4);
-
-                if (message_length == message.size()) {
-                    TaskHandler th;
-                    writes[watcher->fd] = th.handle_task(message);
-                    ev_io* write_watcher = new ev_io;
-                    ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
-                    ev_io_start(EV_DEFAULT, write_watcher);
-                    return;
-                }
-                read_data rd = {.buffer = std::string(buffer + 4, bytes_read - 4),
-                                .total_bytes = message_length};
+                read_data rd = {.buffer = message, .total_bytes = message_length};
                 reads[watcher->fd] = rd;
             } else {
                 read_data rd = {.buffer = std::string(buffer, bytes_read), .total_bytes = 0};
@@ -100,12 +86,11 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         } else {
             read_data& rd = reads[watcher->fd];
             if (rd.total_bytes == 0) {
-                // don't know data length yet, still network byte order
-                const char* read_buffer = rd.buffer.c_str();
+                // We still don't know the data length
                 uint32_t total_bytes_so_far = rd.buffer.size() + bytes_read;
                 if (total_bytes_so_far >= 4) {
                     uint32_t message_length;
-                    memcpy(&message_length, read_buffer, rd.buffer.size());
+                    memcpy(&message_length, rd.buffer.c_str(), rd.buffer.size());
                     memcpy(&message_length + rd.buffer.size(), buffer, 4 - rd.buffer.size());
                     message_length = ntohl(message_length);
                     rd.total_bytes = message_length;
@@ -119,22 +104,30 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
                     rd.buffer = rd.buffer + std::string(buffer, bytes_read);
                 }
             } else {
-                // we know the data length we just haven't received it all yet
+                // We know the data length we just haven't received it all yet
                 if (rd.buffer.size() + bytes_read >= rd.total_bytes) {
                     rd.buffer = rd.buffer + std::string(buffer, rd.total_bytes - rd.buffer.size());
                 } else {
-                    rd.buffer = rd.buffer + std::string(buffer);
+                    rd.buffer = rd.buffer + std::string(buffer, bytes_read);
                 }
             }
-            if (rd.total_bytes == rd.buffer.size()) {
-                TaskHandler th;
-                writes[watcher->fd] = th.handle_task(rd.buffer);
-                ev_io* write_watcher = new ev_io;
-                ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
-                ev_io_start(EV_DEFAULT, write_watcher);
-                reads.erase(watcher->fd);
-                return;
-            }
+        }
+        read_data& rd = reads[watcher->fd];
+        if (rd.total_bytes == rd.buffer.size()) {
+            TaskHandler th;
+            std::string response = th.handle_task(rd.buffer);
+            uint32_t length_prefix = response.size();
+            length_prefix = htonl(length_prefix);
+
+            char length_prefix_arr[4];
+            memcpy(length_prefix_arr, &length_prefix, 4);
+
+            writes.emplace(watcher->fd, std::string(length_prefix_arr, 4) + response);
+
+            ev_io* write_watcher = new ev_io;
+            ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
+            ev_io_start(EV_DEFAULT, write_watcher);
+            reads.erase(watcher->fd);
         }
     }
 }
