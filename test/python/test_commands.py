@@ -27,7 +27,7 @@ class TestCommands(ValtTestCase):
         for _ in range(10):
             self.sendall("get key")
             reply = self.recv_str()
-            if reply == "ERR: key not found":
+            if reply == "ERR_NOT_FOUND":
                 expired = True
                 break
             time.sleep(1)
@@ -72,7 +72,7 @@ class TestCommands(ValtTestCase):
 
         self.sendall("get key")
         reply = self.recv_str()
-        self.assertEqual(reply, "ERR: key not found")
+        self.assertEqual(reply, "ERR_NOT_FOUND")
 
     def test_expire(self):
         self.sendall("set key 10")
@@ -87,7 +87,7 @@ class TestCommands(ValtTestCase):
         for _ in range(10):
             self.sendall("get key")
             reply = self.recv_str()
-            if reply == "ERR: key not found":
+            if reply == "ERR_NOT_FOUND":
                 expired = True
                 break
             time.sleep(1)
@@ -126,9 +126,9 @@ class TestCommands(ValtTestCase):
 
         self.sendall("get key")
         reply = self.recv_str()
-        self.assertEqual(reply, "ERR: key not found")
+        self.assertEqual(reply, "ERR_NOT_FOUND")
 
         self.sendall("get key2")
         reply = self.recv_str()
-        self.assertEqual(reply, "ERR: key not found")
+        self.assertEqual(reply, "ERR_NOT_FOUND")
 

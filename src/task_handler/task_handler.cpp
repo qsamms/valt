@@ -5,13 +5,11 @@
 #include <utils/response_codes.h>
 #include <utils/utils.h>
 
-#include <chrono>
 #include <cstdlib>
-#include <iostream>
 
 int64_t TaskHandler::parse_expiration(const std::string& expiration) {
     if (!std::regex_match(expiration, int_re)) {
-        throw InvalidCommandException("expiration must be an integer");
+        throw InvalidCommandException();
     }
     return (int64_t)seconds_since_epoch() + std::abs(std::stoi(expiration));
 }
@@ -26,18 +24,16 @@ Command TaskHandler::parse_request(const std::string& s) {
 
     switch (operation) {
         case Operation::SET:
-            if (cmd_parts.size() != 3) throw InvalidCommandException("'set' must have 3 operands");
+            if (cmd_parts.size() != 3) throw InvalidCommandException();
             value = cmd_parts[2];
             break;
         case Operation::SETEX:
-            if (cmd_parts.size() != 4)
-                throw InvalidCommandException("'setex' must have 4 operands");
+            if (cmd_parts.size() != 4) throw InvalidCommandException();
             value = cmd_parts[2];
             expiration = parse_expiration(cmd_parts[3]);
             break;
         case Operation::EXPIRE:
-            if (cmd_parts.size() != 3)
-                throw InvalidCommandException("'expire' must have 3 operands");
+            if (cmd_parts.size() != 3) throw InvalidCommandException();
             expiration = parse_expiration(cmd_parts[2]);
             break;
     }
@@ -64,7 +60,7 @@ std::string TaskHandler::perform_op(const Command& cmd) {
         case Operation::FLUSH:
             return flush(cmd) ? OK : ERR_UNKNOWN;
         default:
-            throw InvalidCommandException("unknown action");
+            throw UnknownCommandException();
     }
 }
 
