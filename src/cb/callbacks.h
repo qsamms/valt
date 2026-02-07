@@ -1,3 +1,5 @@
+#pragma once
+
 #include <ev.h>
 
 void client_write_cb(EV_P_ ev_io* watcher, int revents);

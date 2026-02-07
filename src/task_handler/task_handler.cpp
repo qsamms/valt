@@ -1,11 +1,17 @@
 #include "task_handler.h"
 
-#include <db/db.h>
+#include <db/database_mixin.h>
+#include <spdlog/spdlog.h>
 #include <utils/exceptions.h>
 #include <utils/response_codes.h>
 #include <utils/utils.h>
 
 #include <cstdlib>
+#include <regex>
+
+const std::regex int_re(R"(^[+-]?\d+$)");
+
+std::unordered_map<std::string, DBEntry> DataBaseMixin::db{};
 
 int64_t TaskHandler::parse_expiration(const std::string& expiration) {
     if (!std::regex_match(expiration, int_re)) {

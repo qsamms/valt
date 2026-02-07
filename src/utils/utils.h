@@ -1,9 +1,9 @@
 #pragma once
 
+#include <types/types.h>
+
 #include <string>
 #include <vector>
-
-#include "types.h"
 
 std::string to_lower(const std::string& str);
 Operation string_to_op(const std::string& str);

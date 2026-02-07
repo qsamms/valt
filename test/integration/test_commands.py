@@ -4,7 +4,7 @@ import struct
 from test.python.valt_test import ValtTestCase
 
 
-class TestCommands(ValtTestCase): 
+class TestDBCommands(ValtTestCase): 
     def test_set_get(self):
         self.sendall("set key 10")
         reply = self.recv_str()

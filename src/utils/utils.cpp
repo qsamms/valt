@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include <fcntl.h>
+#include <types/types.h>
 
 #include <algorithm>
 #include <chrono>
@@ -8,7 +9,6 @@
 #include <sstream>
 
 #include "exceptions.h"
-#include "types.h"
 
 using RuntimeError = std::runtime_error;
 
