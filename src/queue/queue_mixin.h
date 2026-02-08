@@ -35,7 +35,7 @@ class QueueMixin {
             throw QueueNotFoundException();
         }
         std::vector<int>& q = queues[req.key];
-        if (std::find(q.begin(), q.end(), req.client_fd) != q.end()) {
+        if (std::find(q.begin(), q.end(), req.client_fd) == q.end()) {
             q.push_back(req.client_fd);
         }
         return OK;
