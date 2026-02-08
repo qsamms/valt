@@ -1,7 +1,7 @@
 #include "callbacks.h"
 
 #include <arpa/inet.h>
-#include <task_handler/task_handler.h>
+#include <rh/request_handler.h>
 #include <utils/utils.h>
 
 #include "spdlog/spdlog.h"
@@ -21,6 +21,20 @@ void cleanup_watcher(EV_P_ ev_io* watcher, ConnectionPolicy policy) {
     if (policy == ConnectionPolicy::CLOSE) close(watcher->fd);
     if (watcher->data != nullptr) delete (std::string*)watcher->data;
     delete watcher;
+}
+
+void create_read_watcher(int fd, void* data) {
+    ev_io* watcher = new ev_io;
+    if (data != nullptr) watcher->data = data;
+    ev_io_init(watcher, client_read_cb, fd, EV_READ);
+    ev_io_start(EV_DEFAULT, watcher);
+}
+
+void create_write_watcher(int fd, void* data) {
+    ev_io* watcher = new ev_io;
+    if (data != nullptr) watcher->data = data;
+    ev_io_init(watcher, client_write_cb, fd, EV_WRITE);
+    ev_io_start(EV_DEFAULT, watcher);
 }
 
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
@@ -105,8 +119,8 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         std::string read_buffer = rd->buffer;
 
         if (rd->total_bytes == read_buffer.size()) {
-            TaskHandler& th = TaskHandler::get_instance();
-            std::string response = th.handle_task(read_buffer);
+            RequestHandler& request_handler = RequestHandler::getInstance();
+            std::string response = request_handler.execute(read_buffer, watcher->fd);
             uint32_t length_prefix = response.size();
             length_prefix = htonl(length_prefix);
 
@@ -115,10 +129,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
 
             std::string* write_data = new std::string(std::string(length_prefix_arr, 4) + response);
 
-            ev_io* write_watcher = new ev_io;
-            write_watcher->data = (void*)(write_data);
-            ev_io_init(write_watcher, client_write_cb, watcher->fd, EV_WRITE);
-            ev_io_start(EV_DEFAULT, write_watcher);
+            create_write_watcher(watcher->fd, (void*)write_data);
             watcher->data = nullptr;
         }
     }
@@ -140,9 +151,6 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         int client_port = ntohs(address.sin_port);
         spdlog::debug("Accepted connection from: {}", client_ip);
 
-        struct ev_loop* loop = EV_DEFAULT;
-        ev_io* client_watcher = new ev_io;
-        ev_io_init(client_watcher, client_read_cb, client_fd, EV_READ);
-        ev_io_start(loop, client_watcher);
+        create_read_watcher(client_fd, nullptr);
     }
 }

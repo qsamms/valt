@@ -1,74 +1,78 @@
 #pragma once
 
 #include <types/types.h>
+#include <utils/exceptions.h>
 #include <utils/utils.h>
 
-#include <optional>
 #include <string>
 #include <unordered_map>
 
 class DataBaseMixin {
    private:
+    const std::string OK = "OK";
     static std::unordered_map<std::string, DBEntry> db;
 
    public:
-    int set(const Command& req) {
+    std::string set(const Request& req) {
         DBEntry entry;
         entry.expiration = req.expiration;
         entry.value = req.value;
         db[req.key] = entry;
-        return 1;
+        return OK;
     }
 
-    std::optional<DBEntry> get(const std::string& key) {
+    std::string get(const Request& req) {
+        const std::string& key = req.key;
+
         auto it = db.find(key);
         if (it == db.end()) {
-            return std::nullopt;
+            throw KeyNotFoundException();
         }
         DBEntry entry = it->second;
         int64_t expiration = entry.expiration;
         if (expiration > 0) {
             if (seconds_since_epoch() > expiration) {
                 db.erase(key);
-                return std::nullopt;
+                throw KeyNotFoundException();
             }
         }
-        return entry;
+        return entry.value;
     }
 
-    int del(const std::string& key) {
+    std::string del(const Request& req) {
+        const std::string& key = req.key;
         if (db.contains(key)) {
             db.erase(key);
-            return 1;
         }
-        return 0;
+        return OK;
     }
 
-    int persist(const Command& cmd) {
-        auto it = db.find(cmd.key);
+    std::string persist(const Request& req) {
+        auto it = db.find(req.key);
+
         if (it != db.end()) {
             DBEntry entry = it->second;
             if (entry.expiration > 0 && seconds_since_epoch() > entry.expiration) {
-                db.erase(cmd.key);
-                return 0;
+                db.erase(req.key);
+                throw KeyNotFoundException();
             }
             entry.expiration = -1;
-            return 1;
         }
-        return 0;
+        return OK;
     }
 
-    int expire(const Command& cmd) {
-        auto it = db.find(cmd.key);
+    std::string expire(const Request& req) {
+        auto it = db.find(req.key);
+
         if (it != db.end()) {
-            it->second.expiration = cmd.expiration;
-            return 1;
+            it->second.expiration = req.expiration;
+            return OK;
         }
-        return 0;
+        throw KeyNotFoundException();
     }
 
-    int flush(const Command& cmd) {
+    std::string flush() {
         std::unordered_map<std::string, DBEntry>().swap(db);
-        return 1;
+        return OK;
     }
 };

@@ -19,10 +19,12 @@ enum class Operation {
     FLUSH,
     SUBSCRIBE,
     PUBLISH,
-    CREATE_QUEUE
+    CREATE_QUEUE,
+    DELETE_QUEUE,
 };
 
-struct Command {
+struct Request {
+    int client_fd;
     Operation op;
     std::string key;
     std::string value;
@@ -30,8 +32,14 @@ struct Command {
 };
 
 const std::unordered_map<std::string, Operation> op_mapping = {
-    {"get", Operation::GET},         {"set", Operation::SET},
-    {"setex", Operation::SETEX},     {"persist", Operation::PERSIST},
-    {"expire", Operation::EXPIRE},   {"delete", Operation::DELETE},
-    {"flush", Operation::FLUSH},     {"subscribe", Operation::SUBSCRIBE},
-    {"publish", Operation::PUBLISH}, {"create_queue", Operation::CREATE_QUEUE}};
+    {"get", Operation::GET},
+    {"set", Operation::SET},
+    {"setex", Operation::SETEX},
+    {"persist", Operation::PERSIST},
+    {"expire", Operation::EXPIRE},
+    {"delete", Operation::DELETE},
+    {"flush", Operation::FLUSH},
+    {"subscribe", Operation::SUBSCRIBE},
+    {"publish", Operation::PUBLISH},
+    {"create_queue", Operation::CREATE_QUEUE},
+    {"delete_queue", Operation::DELETE_QUEUE}};

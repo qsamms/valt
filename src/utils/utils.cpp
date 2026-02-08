@@ -22,7 +22,7 @@ std::string to_lower(const std::string& str) {
 Operation string_to_op(const std::string& s) {
     auto it = op_mapping.find(to_lower(s));
     if (it == op_mapping.end()) {
-        throw InvalidCommandException("Unknown command");
+        throw InvalidCommandException();
     }
     return it->second;
 }

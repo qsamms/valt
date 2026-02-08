@@ -3,29 +3,48 @@
 #include <exception>
 #include <string>
 
-#include "response_codes.h"
+const std::string ERR_KEY_NOT_FOUND = "ERR_KEY_NOT_FOUND";
+const std::string ERR_INVALID_COMMAND = "ERR_INVALID_COMMAND";
+const std::string ERR_UNKNOWN_COMMAND = "ERR_UNKNOWN_COMMAND";
+const std::string ERR_UNKNOWN = "ERR_UNKNOWN";
 
-class InvalidCommandException : public std::exception {
+const std::string ERR_QUEUE_EXISTS = "ERR_QUEUE_EXISTS";
+const std::string ERR_QUEUE_NOT_FOUND = "ERR_QUEUE_NOT_FOUND";
+
+class ValtException : public std::exception {
    private:
     std::string message;
 
    public:
-    InvalidCommandException(const std::string& s) { message = ERR_INVALID_COMMAND + ": " + s; }
-    InvalidCommandException() : message(ERR_INVALID_COMMAND) {}
+    ValtException(const std::string& s) : message(s) {}
+    ValtException() : message(ERR_UNKNOWN) {}
 
     const char* what() const noexcept override { return message.c_str(); }
 
     const int get_message_size() { return message.size(); }
 };
 
-class UnknownCommandException : public std::exception {
-   private:
-    std::string message;
-
+class InvalidCommandException : public ValtException {
    public:
-    UnknownCommandException() : message(ERR_UNKNOWN_COMMAND) {}
+    InvalidCommandException() : ValtException(ERR_INVALID_COMMAND) {}
+};
 
-    const char* what() const noexcept override { return message.c_str(); }
+class UnknownCommandException : public ValtException {
+   public:
+    UnknownCommandException() : ValtException(ERR_UNKNOWN_COMMAND) {}
+};
 
-    const int get_message_size() { return message.size(); }
+class KeyNotFoundException : public ValtException {
+   public:
+    KeyNotFoundException() : ValtException(ERR_KEY_NOT_FOUND) {}
+};
+
+class QueueExistsException : public ValtException {
+   public:
+    QueueExistsException() : ValtException(ERR_QUEUE_EXISTS) {}
+};
+
+class QueueNotFoundException : public ValtException {
+   public:
+    QueueNotFoundException() : ValtException(ERR_QUEUE_NOT_FOUND) {}
 };

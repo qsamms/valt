@@ -8,9 +8,9 @@ find_package(spdlog REQUIRED)
 
 add_executable(
     valt
-    src/cb/callbacks.cpp
     src/main.cpp 
-    src/task_handler/task_handler.cpp
+    src/cb/callbacks.cpp
+    src/rh/request_handler.cpp
     src/utils/utils.cpp
 )
 
