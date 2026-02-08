@@ -11,9 +11,6 @@
 
 const std::regex int_re(R"(^[+-]?\d+$)");
 
-std::unordered_map<std::string, DBEntry> DataBaseMixin::db{};
-std::unordered_map<std::string, std::vector<int>> QueueMixin::queues{};
-
 std::string RequestHandler::execute(const std::string& request_string, const int& client_fd) {
     try {
         Request req = parseRequest(request_string);

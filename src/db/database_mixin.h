@@ -1,6 +1,7 @@
 #pragma once
 
 #include <types/types.h>
+#include <utils/constants.h>
 #include <utils/exceptions.h>
 #include <utils/utils.h>
 
@@ -9,10 +10,11 @@
 
 class DataBaseMixin {
    private:
-    const std::string OK = "OK";
-    static std::unordered_map<std::string, DBEntry> db;
+    std::unordered_map<std::string, DBEntry> db;
 
    public:
+    DataBaseMixin() { db = std::unordered_map<std::string, DBEntry>(); }
+
     std::string set(const Request& req) {
         DBEntry entry;
         entry.expiration = req.expiration;

@@ -2,6 +2,7 @@
 
 #include <cb/callbacks.h>
 #include <types/types.h>
+#include <utils/constants.h>
 #include <utils/exceptions.h>
 
 #include <algorithm>
@@ -11,10 +12,11 @@
 
 class QueueMixin {
    private:
-    const std::string OK = "OK";
-    static std::unordered_map<std::string, std::vector<int>> queues;
+    std::unordered_map<std::string, std::vector<int>> queues;
 
    public:
+    QueueMixin() { queues = std::unordered_map<std::string, std::vector<int>>(); }
+
     std::string deleteQueue(const Request& req) {
         queues.erase(req.key);
         return OK;
