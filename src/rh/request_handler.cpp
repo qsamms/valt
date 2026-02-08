@@ -80,6 +80,10 @@ Request RequestHandler::parseRequest(const std::string& request_string) {
             if (num_args != 2) throw InvalidCommandException();
             key = args[1];
             break;
+        case Operation::PERSIST:
+            if (num_args != 2) throw InvalidCommandException();
+            key = args[1];
+            break;
         case Operation::EXPIRE:
             if (num_args != 3) throw InvalidCommandException();
             key = args[1];
