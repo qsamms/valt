@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
         throw RuntimeError("failed to create socket");
     }
 
-    set_nonblocking(server_fd);
+    utils::set_nonblocking(server_fd);
 
     memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;          // IPv4
@@ -53,12 +53,9 @@ int main(int argc, char* argv[]) {
         throw RuntimeError("listen failed");
     }
 
-    struct ev_loop* loop = EV_DEFAULT;
-    ev_io accept_watcher;
-    ev_io_init(&accept_watcher, accept_connection_cb, server_fd, EV_READ);
-    ev_io_start(loop, &accept_watcher);
+    create_accept_watcher(server_fd);
 
-    ev_run(loop, 0);
+    ev_run(EV_DEFAULT, 0);
 
     close(server_fd);
     return 0;

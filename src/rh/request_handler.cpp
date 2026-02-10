@@ -37,14 +37,18 @@ std::string RequestHandler::performRequest(const Request& req) {
         case Operation::PERSIST:
             return persist(req);
         case Operation::FLUSH:
-            return flush();
+            flush_db();
+            flush_queues();
+            return OK;
         case Operation::CREATE_QUEUE:
             return createQueue(req);
         case Operation::DELETE_QUEUE:
             return deleteQueue(req);
         case Operation::SUBSCRIBE:
+            spdlog::info("subscribe");
             return subscribe(req);
         case Operation::PUBLISH:
+            spdlog::info("publish");
             return publish(req);
         default:
             throw UnknownCommandException();
@@ -52,10 +56,10 @@ std::string RequestHandler::performRequest(const Request& req) {
 }
 
 Request RequestHandler::parseRequest(const std::string& request_string) {
-    std::vector<std::string> args = split(request_string, ' ');
+    std::vector<std::string> args = utils::split(request_string, ' ');
     uint8_t num_args = args.size();
 
-    Operation operation = string_to_op(args[0]);
+    Operation operation = utils::to_operation(args[0]);
     std::string key;
     std::string value;
     int64_t expiration = -1;
@@ -118,5 +122,5 @@ int64_t RequestHandler::parseExpiration(const std::string& expiration) {
     if (!std::regex_match(expiration, int_re)) {
         throw InvalidCommandException();
     }
-    return (int64_t)seconds_since_epoch() + std::abs(std::stoi(expiration));
+    return static_cast<int64_t>(utils::seconds_since_epoch()) + std::abs(std::stoi(expiration));
 }

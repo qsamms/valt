@@ -6,7 +6,9 @@
 
 #include "spdlog/spdlog.h"
 
-struct ReadData {
+namespace {
+
+struct WatcherData {
     std::string buffer;
     uint32_t total_bytes;
 };
@@ -16,25 +18,11 @@ enum class ConnectionPolicy {
     KEEPALIVE,
 };
 
-void cleanup_watcher(EV_P_ ev_io* watcher, ConnectionPolicy policy) {
+void cleanup_watcher(EV_P_ ev_io* watcher, const ConnectionPolicy& policy) {
     ev_io_stop(EV_A_ watcher);
     if (policy == ConnectionPolicy::CLOSE) close(watcher->fd);
-    if (watcher->data != nullptr) delete (std::string*)watcher->data;
+    if (watcher->data != nullptr) delete watcher->data;
     delete watcher;
-}
-
-void create_read_watcher(int fd, void* data) {
-    ev_io* watcher = new ev_io;
-    if (data != nullptr) watcher->data = data;
-    ev_io_init(watcher, client_read_cb, fd, EV_READ);
-    ev_io_start(EV_DEFAULT, watcher);
-}
-
-void create_write_watcher(int fd, void* data) {
-    ev_io* watcher = new ev_io;
-    if (data != nullptr) watcher->data = data;
-    ev_io_init(watcher, client_write_cb, fd, EV_WRITE);
-    ev_io_start(EV_DEFAULT, watcher);
 }
 
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
@@ -44,16 +32,16 @@ void client_write_cb(EV_P_ ev_io* watcher, int revents) {
             return;
         }
 
-        std::string* content = (std::string*)watcher->data;
-        int bytes_sent = send(watcher->fd, (*content).c_str(), (*content).size(), 0);
+        WatcherData* data = static_cast<WatcherData*>(watcher->data);
+        int bytes_sent = send(watcher->fd, data->buffer.c_str(), data->buffer.size(), 0);
         if (bytes_sent <= 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) return;
             cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
             return;
         }
 
-        *content = (*content).substr(bytes_sent);
-        if ((*content).empty()) {
+        data->buffer = data->buffer.substr(bytes_sent);
+        if (data->buffer.empty()) {
             cleanup_watcher(EV_A_ watcher, ConnectionPolicy::KEEPALIVE);
         }
     }
@@ -71,28 +59,30 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         }
 
         if (watcher->data == nullptr) {
-            ReadData* rd;
+            WatcherData* rd;
             if (bytes_read >= 4) {
-                uint32_t message_length;
-                memcpy(&message_length, buffer, 4);
+                uint32_t message_length = 0;
+                memcpy(reinterpret_cast<char*>(&message_length), buffer, 4);
                 message_length = ntohl(message_length);
                 std::string message = std::string(buffer + 4, bytes_read - 4);
-                rd = new ReadData{.buffer = message, .total_bytes = message_length};
+                rd = new WatcherData{.buffer = message, .total_bytes = message_length};
             } else {
-                rd = new ReadData{.buffer = std::string(buffer, bytes_read), .total_bytes = 0};
+                rd = new WatcherData{.buffer = std::string(buffer, bytes_read), .total_bytes = 0};
             }
             watcher->data = rd;
         } else {
-            ReadData* rd = (ReadData*)watcher->data;
+            WatcherData* rd = static_cast<WatcherData*>(watcher->data);
             std::string& read_buffer = rd->buffer;
 
             if (rd->total_bytes == 0) {
                 // We still don't know the data length
                 uint32_t total_bytes_so_far = read_buffer.size() + bytes_read;
                 if (total_bytes_so_far >= 4) {
-                    uint32_t message_length;
-                    memcpy(&message_length, read_buffer.c_str(), read_buffer.size());
-                    memcpy(&message_length + read_buffer.size(), buffer, 4 - read_buffer.size());
+                    uint32_t message_length = 0;
+                    memcpy(reinterpret_cast<char*>(&message_length), read_buffer.c_str(),
+                           read_buffer.size());
+                    memcpy(reinterpret_cast<char*>(&message_length) + read_buffer.size(), buffer,
+                           4 - read_buffer.size());
                     message_length = ntohl(message_length);
                     rd->total_bytes = message_length;
 
@@ -115,21 +105,12 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             }
         }
 
-        ReadData* rd = (ReadData*)watcher->data;
+        WatcherData* rd = static_cast<WatcherData*>(watcher->data);
         std::string read_buffer = rd->buffer;
-
         if (rd->total_bytes == read_buffer.size()) {
             RequestHandler& request_handler = RequestHandler::getInstance();
             std::string response = request_handler.execute(read_buffer, watcher->fd);
-            uint32_t length_prefix = response.size();
-            length_prefix = htonl(length_prefix);
-
-            char length_prefix_arr[4];
-            memcpy(length_prefix_arr, &length_prefix, 4);
-
-            std::string* write_data = new std::string(std::string(length_prefix_arr, 4) + response);
-
-            create_write_watcher(watcher->fd, (void*)write_data);
+            create_write_watcher(watcher->fd, response);
             watcher->data = nullptr;
         }
     }
@@ -144,7 +125,7 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
             spdlog::debug("Failed to accept connection");
             return;
         }
-        set_nonblocking(client_fd);
+        utils::set_nonblocking(client_fd);
 
         char client_ip[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
@@ -153,4 +134,33 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
 
         create_read_watcher(client_fd, nullptr);
     }
+}
+
+}  // namespace
+
+void create_read_watcher(int fd, void* data) {
+    ev_io* watcher = new ev_io{};
+    watcher->data = data;
+    ev_io_init(watcher, client_read_cb, fd, EV_READ);
+    ev_io_start(EV_DEFAULT, watcher);
+}
+
+void create_write_watcher(int fd, const std::string& response) {
+    ev_io* watcher = new ev_io{};
+
+    uint32_t response_size = htonl(response.size());
+    char length_prefix[4];
+    memcpy(length_prefix, &response_size, 4);
+
+    WatcherData* wd = new WatcherData{
+        .buffer = std::string(std::string(length_prefix, 4) + response), .total_bytes = 0};
+    watcher->data = wd;
+    ev_io_init(watcher, client_write_cb, fd, EV_WRITE);
+    ev_io_start(EV_DEFAULT, watcher);
+}
+
+void create_accept_watcher(const int& fd) {
+    ev_io* watcher = new ev_io{};
+    ev_io_init(watcher, accept_connection_cb, fd, EV_READ);
+    ev_io_start(EV_DEFAULT, watcher);
 }

@@ -33,7 +33,7 @@ class DataBaseMixin {
         DBEntry entry = it->second;
         int64_t expiration = entry.expiration;
         if (expiration > 0) {
-            if (seconds_since_epoch() > expiration) {
+            if (utils::seconds_since_epoch() > expiration) {
                 db.erase(key);
                 throw KeyNotFoundException();
             }
@@ -54,7 +54,7 @@ class DataBaseMixin {
 
         if (it != db.end()) {
             DBEntry entry = it->second;
-            if (entry.expiration > 0 && seconds_since_epoch() > entry.expiration) {
+            if (entry.expiration > 0 && utils::seconds_since_epoch() > entry.expiration) {
                 db.erase(req.key);
                 throw KeyNotFoundException();
             }
@@ -73,8 +73,8 @@ class DataBaseMixin {
         throw KeyNotFoundException();
     }
 
-    std::string flush() {
-        std::unordered_map<std::string, DBEntry>().swap(db);
+    std::string flush_db() {
+        db.clear();
         return OK;
     }
 };

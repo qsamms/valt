@@ -12,6 +12,8 @@
 
 using RuntimeError = std::runtime_error;
 
+namespace utils {
+
 std::string to_lower(const std::string& str) {
     std::string out(str);
     std::transform(out.begin(), out.end(), out.begin(),
@@ -19,8 +21,8 @@ std::string to_lower(const std::string& str) {
     return out;
 }
 
-Operation string_to_op(const std::string& s) {
-    auto it = op_mapping.find(to_lower(s));
+Operation to_operation(const std::string& s) {
+    auto it = op_mapping.find(utils::to_lower(s));
     if (it == op_mapping.end()) {
         throw InvalidCommandException();
     }
@@ -76,3 +78,5 @@ std::string escape_string(const std::string& s) {
     }
     return result;
 }
+
+}  // namespace utils

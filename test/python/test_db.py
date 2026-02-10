@@ -1,10 +1,10 @@
 import time
 import struct
 
-from test.integration.valt_test import ValtTestCase
+from test.python.valt_test import ValtTestCase
 
 
-class TestDBCommands(ValtTestCase): 
+class TestDB(ValtTestCase): 
     def test_set_get(self):
         self.sendall("set key 10")
         reply = self.recv_str()
