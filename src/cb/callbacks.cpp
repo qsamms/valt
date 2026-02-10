@@ -21,7 +21,7 @@ enum class ConnectionPolicy {
 void cleanup_watcher(EV_P_ ev_io* watcher, const ConnectionPolicy& policy) {
     ev_io_stop(EV_A_ watcher);
     if (policy == ConnectionPolicy::CLOSE) close(watcher->fd);
-    if (watcher->data != nullptr) delete watcher->data;
+    if (watcher->data != nullptr) delete static_cast<WatcherData*>(watcher->data);
     delete watcher;
 }
 
