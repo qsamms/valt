@@ -11,10 +11,12 @@
 
 const std::regex int_re(R"(^[+-]?\d+$)");
 
-std::string RequestHandler::execute(const std::string& request_string, const int& client_fd) {
+std::string RequestHandler::execute(const std::string& request_string, const int& client_fd,
+                                    SSL* ssl) {
     try {
         Request req = parseRequest(request_string);
         req.client_fd = client_fd;
+        req.ssl = ssl;
         std::string response = performRequest(req);
         return response;
     } catch (std::exception& e) {
@@ -45,7 +47,6 @@ std::string RequestHandler::performRequest(const Request& req) {
         case Operation::DELETE_QUEUE:
             return deleteQueue(req);
         case Operation::SUBSCRIBE:
-            spdlog::info("subscribe");
             return subscribe(req);
         case Operation::PUBLISH:
             spdlog::info("publish");

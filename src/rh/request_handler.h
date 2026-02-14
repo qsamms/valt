@@ -22,7 +22,7 @@ class RequestHandler : DataBaseMixin, QueueMixin {
     std::string performRequest(const Request&);
 
    public:
-    std::string execute(const std::string&, const int& client_fd);
+    std::string execute(const std::string&, const int& client_fd, SSL* ssl);
 
     static RequestHandler& getInstance() {
         static RequestHandler instance;

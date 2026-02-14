@@ -1,5 +1,7 @@
 #include "utils.h"
 
+#include <arpa/inet.h>
+#include <conf/valt_config.h>
 #include <fcntl.h>
 #include <types/types.h>
 
@@ -77,6 +79,61 @@ std::string escape_string(const std::string& s) {
         }
     }
     return result;
+}
+
+int init_server(int port, int max_pending_connections) {
+    struct sockaddr_in address;
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd == -1) {
+        throw std::runtime_error("failed to create socket");
+    }
+
+    utils::set_nonblocking(server_fd);
+
+    memset(&address, 0, sizeof(address));
+    address.sin_family = AF_INET;          // IPv4
+    address.sin_addr.s_addr = INADDR_ANY;  // Bind to all interfaces
+    address.sin_port = htons(port);
+
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+        close(server_fd);
+        throw std::runtime_error("setsockopt failed");
+    }
+
+    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
+        close(server_fd);
+        throw std::runtime_error("bind failed");
+    }
+
+    if (listen(server_fd, max_pending_connections) == -1) {
+        close(server_fd);
+        throw std::runtime_error("listen failed");
+    }
+
+    return server_fd;
+}
+
+SSL_CTX* create_ssl_context(const std::string& cert_path, const std::string& key_path) {
+    SSL_CTX* ctx = SSL_CTX_new(TLS_server_method());
+    if (!ctx) {
+        ERR_print_errors_fp(stderr);
+        return nullptr;
+    }
+
+    if (SSL_CTX_use_certificate_file(ctx, cert_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        SSL_CTX_free(ctx);
+        return nullptr;
+    }
+
+    if (SSL_CTX_use_PrivateKey_file(ctx, key_path.c_str(), SSL_FILETYPE_PEM) <= 0) {
+        ERR_print_errors_fp(stderr);
+        SSL_CTX_free(ctx);
+        return nullptr;
+    }
+
+    return ctx;
 }
 
 }  // namespace utils

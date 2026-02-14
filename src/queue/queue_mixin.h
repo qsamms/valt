@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cb/callbacks.h>
+#include <openssl/ssl.h>
 #include <types/types.h>
 #include <utils/constants.h>
 #include <utils/exceptions.h>
@@ -10,49 +11,30 @@
 #include <unordered_set>
 #include <vector>
 
+struct QueueObject {
+    int fd;
+    SSL* ssl;
+
+    bool operator==(const QueueObject& other) const { return fd == other.fd; }
+};
+
+namespace std {
+template <>
+struct hash<QueueObject> {
+    size_t operator()(const QueueObject& qo) const { return std::hash<int>{}(qo.fd); }
+};
+}  // namespace std
+
 class QueueMixin {
    private:
-    std::unordered_map<std::string, std::unordered_set<int>> q_clients;
+    std::unordered_map<std::string, std::unordered_set<QueueObject>> q_clients;
 
    public:
-    QueueMixin() { q_clients = std::unordered_map<std::string, std::unordered_set<int>>(); }
+    QueueMixin();
 
-    std::string deleteQueue(const Request& req) {
-        q_clients.erase(req.key);
-        return OK;
-    }
-
-    std::string createQueue(const Request& req) {
-        if (q_clients.contains(req.key)) {
-            throw QueueExistsException();
-        }
-        q_clients[req.key] = std::unordered_set<int>();
-        return OK;
-    }
-
-    std::string subscribe(const Request& req) {
-        if (!q_clients.contains(req.key)) {
-            throw QueueNotFoundException();
-        }
-        std::unordered_set<int>& clients = q_clients[req.key];
-        clients.insert(req.client_fd);
-        return OK;
-    }
-
-    std::string publish(const Request& req) {
-        if (!q_clients.contains(req.key)) {
-            throw QueueNotFoundException();
-        }
-        const std::unordered_set<int>& fds = q_clients[req.key];
-        for (const int& fd : fds) {
-            create_write_watcher(fd, std::string(req.value));
-        }
-
-        return OK;
-    }
-
-    std::string flush_queues() {
-        q_clients.clear();
-        return OK;
-    }
+    std::string deleteQueue(const Request& req);
+    std::string createQueue(const Request& req);
+    std::string subscribe(const Request& req);
+    std::string publish(const Request& req);
+    std::string flush_queues();
 };

@@ -1,18 +1,16 @@
 #include <arpa/inet.h>
 #include <cb/callbacks.h>
+#include <conf/valt_config.h>
 #include <ev.h>
+#include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <utils/utils.h>
 
+#include <CLI/CLI.hpp>
 #include <iostream>
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
-
-#define SERVER_PORT 9999
-#define MAX_PENDING_CONNECTIONS 10
-#define MAX_CONCURRENT_CONNECTIONS 10000
-
-using RuntimeError = std::runtime_error;
 
 int main(int argc, char* argv[]) {
     try {
@@ -24,36 +22,37 @@ int main(int argc, char* argv[]) {
         std::cout << "Log initialization failed: " << ex.what() << std::endl;
     }
 
-    struct sockaddr_in address;
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == -1) {
-        throw RuntimeError("failed to create socket");
+    ValtConfig cfg;
+
+    auto app = std::make_unique<CLI::App>("Valt Database");
+
+    app->add_option("--port", cfg.port, "Raw TCP port");
+    app->add_option("--tls_port", cfg.tls_port, "TLS secured port");
+    app->add_option("--cert-file", cfg.cert_path, "File path to TLS certificate");
+    app->add_option("--key-file", cfg.private_key, "Filepath to TLS private key");
+    app->add_option("--max_connections", cfg.max_connections, "Max connections");
+    app->add_option("--max_pending_connections", cfg.max_pending_connections,
+                    "Max pending connections");
+    app->set_version_flag("--version", "0.1.0");
+
+    try {
+        app->parse(argc, argv);
+    } catch (const CLI::ParseError& e) {
+        return app->exit(e);
     }
 
-    utils::set_nonblocking(server_fd);
+    int server_fd = utils::init_server(cfg.port, cfg.max_pending_connections);
+    create_accept_watcher(server_fd, nullptr);
 
-    memset(&address, 0, sizeof(address));
-    address.sin_family = AF_INET;          // IPv4
-    address.sin_addr.s_addr = INADDR_ANY;  // Bind to all interfaces
-    address.sin_port = htons(SERVER_PORT);
+    if (cfg.cert_path.size() > 0 && cfg.private_key.size() > 0) {
+        SSL_CTX* ssl_ctx = utils::create_ssl_context(cfg.cert_path, cfg.private_key);
+        if (!ssl_ctx) {
+            throw std::runtime_error("Error setting up SSL context");
+        }
 
-    int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-        close(server_fd);
-        throw RuntimeError("setsockopt failed");
+        int tls_server_fd = utils::init_server(cfg.tls_port, cfg.max_pending_connections);
+        create_accept_watcher(tls_server_fd, ssl_ctx);
     }
-
-    if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) == -1) {
-        close(server_fd);
-        throw RuntimeError("bind failed");
-    }
-
-    if (listen(server_fd, MAX_PENDING_CONNECTIONS) == -1) {
-        close(server_fd);
-        throw RuntimeError("listen failed");
-    }
-
-    create_accept_watcher(server_fd);
 
     ev_run(EV_DEFAULT, 0);
 

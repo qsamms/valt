@@ -1,5 +1,7 @@
 #pragma once
 
+#include <openssl/ssl.h>
+
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -25,6 +27,7 @@ enum class Operation {
 
 struct Request {
     int client_fd;
+    SSL* ssl;
     Operation op;
     std::string key;
     std::string value;
