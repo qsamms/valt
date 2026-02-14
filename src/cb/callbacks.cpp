@@ -145,7 +145,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         std::string read_buffer = rd->buffer;
         if (rd->total_bytes == read_buffer.size()) {
             RequestHandler& request_handler = RequestHandler::getInstance();
-            std::string response = request_handler.execute(read_buffer, watcher->fd);
+            std::string response = request_handler.execute(read_buffer, watcher->fd, rd->ssl);
             create_write_watcher(watcher->fd, response, rd->ssl);
             watcher->data = nullptr;
         }
