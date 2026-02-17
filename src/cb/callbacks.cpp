@@ -2,8 +2,8 @@
 
 #include <arpa/inet.h>
 #include <openssl/err.h>
-#include <rh/request_handler.h>
 #include <utils/utils.h>
+#include <valt/valt.h>
 
 #include "spdlog/spdlog.h"
 
@@ -23,12 +23,10 @@ enum class ConnectionPolicy {
 void cleanup_watcher(EV_P_ ev_io* watcher, const ConnectionPolicy& policy) {
     ev_io_stop(EV_A_ watcher);
     if (policy == ConnectionPolicy::CLOSE) {
-        if (watcher->data != nullptr) {
-            WatcherData* wd = static_cast<WatcherData*>(watcher->data);
-            if (wd->ssl) {
-                SSL_shutdown(wd->ssl);
-                SSL_free(wd->ssl);
-            }
+        WatcherData* wd = static_cast<WatcherData*>(watcher->data);
+        if (wd != nullptr && wd->ssl) {
+            SSL_shutdown(wd->ssl);
+            SSL_free(wd->ssl);
         }
         close(watcher->fd);
     }
@@ -141,11 +139,10 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             }
         }
 
-        WatcherData* rd = static_cast<WatcherData*>(watcher->data);
         std::string read_buffer = rd->buffer;
         if (rd->total_bytes == read_buffer.size()) {
-            RequestHandler& request_handler = RequestHandler::getInstance();
-            std::string response = request_handler.execute(read_buffer, watcher->fd, rd->ssl);
+            Valt& valt = Valt::getInstance();
+            std::string response = valt.execute(read_buffer, watcher->fd, rd->ssl);
             create_write_watcher(watcher->fd, response, rd->ssl);
             watcher->data = nullptr;
         }

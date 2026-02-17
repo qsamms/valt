@@ -1,7 +1,6 @@
-#include "request_handler.h"
+#include "valt.h"
 
 #include <db/database_mixin.h>
-#include <spdlog/spdlog.h>
 #include <utils/exceptions.h>
 #include <utils/utils.h>
 
@@ -11,8 +10,7 @@
 
 const std::regex int_re(R"(^[+-]?\d+$)");
 
-std::string RequestHandler::execute(const std::string& request_string, const int& client_fd,
-                                    SSL* ssl) {
+std::string Valt::execute(const std::string& request_string, const int& client_fd, SSL* ssl) {
     try {
         Request req = parseRequest(request_string);
         req.client_fd = client_fd;
@@ -24,7 +22,7 @@ std::string RequestHandler::execute(const std::string& request_string, const int
     }
 }
 
-std::string RequestHandler::performRequest(const Request& req) {
+std::string Valt::performRequest(const Request& req) {
     switch (req.op) {
         case Operation::GET:
             return get(req);
@@ -49,14 +47,13 @@ std::string RequestHandler::performRequest(const Request& req) {
         case Operation::SUBSCRIBE:
             return subscribe(req);
         case Operation::PUBLISH:
-            spdlog::info("publish");
             return publish(req);
         default:
             throw UnknownCommandException();
     }
 }
 
-Request RequestHandler::parseRequest(const std::string& request_string) {
+Request Valt::parseRequest(const std::string& request_string) {
     std::vector<std::string> args = utils::split(request_string, ' ');
     uint8_t num_args = args.size();
 
@@ -119,7 +116,7 @@ Request RequestHandler::parseRequest(const std::string& request_string) {
     return Request{.op = operation, .key = key, .value = value, .expiration = expiration};
 }
 
-int64_t RequestHandler::parseExpiration(const std::string& expiration) {
+int64_t Valt::parseExpiration(const std::string& expiration) {
     if (!std::regex_match(expiration, int_re)) {
         throw InvalidCommandException();
     }

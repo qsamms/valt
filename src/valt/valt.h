@@ -7,15 +7,15 @@
 #include <cstdint>
 #include <string>
 
-class RequestHandler : DataBaseMixin, QueueMixin {
+class Valt : DataBaseMixin, QueueMixin {
    private:
-    RequestHandler() = default;
-    ~RequestHandler() = default;
+    Valt() = default;
+    ~Valt() = default;
 
-    RequestHandler(const RequestHandler&) = delete;
-    RequestHandler& operator=(const RequestHandler&) = delete;
-    RequestHandler(RequestHandler&&) = delete;
-    RequestHandler& operator=(RequestHandler&&) = delete;
+    Valt(const Valt&) = delete;
+    Valt& operator=(const Valt&) = delete;
+    Valt(Valt&&) = delete;
+    Valt& operator=(Valt&&) = delete;
 
     Request parseRequest(const std::string&);
     int64_t parseExpiration(const std::string&);
@@ -24,8 +24,8 @@ class RequestHandler : DataBaseMixin, QueueMixin {
    public:
     std::string execute(const std::string&, const int& client_fd, SSL* ssl);
 
-    static RequestHandler& getInstance() {
-        static RequestHandler instance;
+    static Valt& getInstance() {
+        static Valt instance;
         return instance;
     }
 };
