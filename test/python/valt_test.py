@@ -6,7 +6,7 @@ import struct
 
 
 HOST = "127.0.0.1"
-PORT = 9999
+PORT = 1738
 SERVER_EXECUTABLE_PATH = "build/valt"
 
 

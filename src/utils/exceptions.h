@@ -42,3 +42,8 @@ class QueueNotFoundException : public ValtException {
    public:
     QueueNotFoundException() : ValtException(ERR_QUEUE_NOT_FOUND) {}
 };
+
+class UnauthenticatedException : public ValtException {
+   public:
+    UnauthenticatedException() : ValtException(ERR_UNAUTHENTICATED) {}
+};

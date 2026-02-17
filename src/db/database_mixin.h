@@ -8,6 +8,11 @@
 #include <string>
 #include <unordered_map>
 
+struct DBEntry {
+    std::string value;
+    int64_t expiration;
+};
+
 class DataBaseMixin {
    private:
     std::unordered_map<std::string, DBEntry> db;

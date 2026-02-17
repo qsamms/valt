@@ -15,6 +15,9 @@ std::string Valt::execute(const std::string& request_string, const int& client_f
         Request req = parseRequest(request_string);
         req.client_fd = client_fd;
         req.ssl = ssl;
+
+        validate_authenticated(client_fd);
+
         std::string response = performRequest(req);
         return response;
     } catch (std::exception& e) {
@@ -24,6 +27,8 @@ std::string Valt::execute(const std::string& request_string, const int& client_f
 
 std::string Valt::performRequest(const Request& req) {
     switch (req.op) {
+        case Operation::AUTHENTICATE:
+            return authenticate(req);
         case Operation::GET:
             return get(req);
         case Operation::SET:
@@ -63,6 +68,10 @@ Request Valt::parseRequest(const std::string& request_string) {
     int64_t expiration = -1;
 
     switch (operation) {
+        case Operation::AUTHENTICATE:
+            if (num_args != 2) throw InvalidCommandException();
+            value = args[1];
+            break;
         case Operation::GET:
             if (num_args != 2) throw InvalidCommandException();
             key = args[1];

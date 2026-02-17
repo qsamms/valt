@@ -4,6 +4,7 @@
 #include <string>
 
 struct ValtConfig {
+    bool no_auth = false;
     int port = 1738;
     int tls_port = 6767;
     std::string cert_path = "";

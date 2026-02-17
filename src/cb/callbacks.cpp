@@ -29,6 +29,8 @@ void cleanup_watcher(EV_P_ ev_io* watcher, const ConnectionPolicy& policy) {
             SSL_free(wd->ssl);
         }
         close(watcher->fd);
+        Valt& valt = Valt::getInstance();
+        valt.end_session(watcher->fd);
     }
     if (watcher->data != nullptr) delete static_cast<WatcherData*>(watcher->data);
     delete watcher;
@@ -193,6 +195,9 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         inet_ntop(AF_INET, &address.sin_addr, client_ip, sizeof(client_ip));
         int client_port = ntohs(address.sin_port);
         spdlog::debug("Accepted connection from: {}", client_ip);
+
+        Valt& valt = Valt::getInstance();
+        valt.create_session(client_fd);
 
         SSL_CTX* ssl_ctx = static_cast<SSL_CTX*>(watcher->data);
         if (ssl_ctx == nullptr) {

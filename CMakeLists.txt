@@ -14,6 +14,7 @@ add_executable(
     src/valt/valt.cpp
     src/db/database_mixin.cpp
     src/queue/queue_mixin.cpp
+    src/permissions/permissions_mixin.cpp
     src/utils/utils.cpp
 )
 

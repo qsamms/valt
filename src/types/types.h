@@ -6,12 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-struct DBEntry {
-    std::string value;
-    int64_t expiration;
-};
-
 enum class Operation {
+    AUTHENTICATE,
     GET,
     SET,
     SETEX,
@@ -25,6 +21,10 @@ enum class Operation {
     DELETE_QUEUE,
 };
 
+struct Connection {
+    bool authenticated;
+};
+
 struct Request {
     int client_fd;
     SSL* ssl;
@@ -35,6 +35,7 @@ struct Request {
 };
 
 const std::unordered_map<std::string, Operation> op_mapping = {
+    {"authenticate", Operation::AUTHENTICATE},
     {"get", Operation::GET},
     {"set", Operation::SET},
     {"setex", Operation::SETEX},
