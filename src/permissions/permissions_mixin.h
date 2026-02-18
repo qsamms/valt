@@ -14,7 +14,7 @@ class PermissionsMixin {
     std::string authenticate(const Request& req);
 
     void disable_authentication();
-    void validate_authenticated(int client_fd);
+    void validate_authenticated(const Request& req);
     void create_session(int client_fd);
     void end_session(int client_fd);
 };

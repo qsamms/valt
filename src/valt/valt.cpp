@@ -16,7 +16,7 @@ std::string Valt::execute(const std::string& request_string, const int& client_f
         req.client_fd = client_fd;
         req.ssl = ssl;
 
-        validate_authenticated(client_fd);
+        validate_authenticated(req);
 
         std::string response = performRequest(req);
         return response;

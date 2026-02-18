@@ -27,8 +27,9 @@ void PermissionsMixin::end_session(int client_fd) {
     }
 }
 
-void PermissionsMixin::validate_authenticated(int client_fd) {
-    if (authentication_enabled && (!conns.contains(client_fd) || !conns[client_fd].authenticated)) {
+void PermissionsMixin::validate_authenticated(const Request& req) {
+    if (authentication_enabled && req.op != Operation::AUTHENTICATE &&
+        (!conns.contains(req.client_fd) || !conns[req.client_fd].authenticated)) {
         throw UnauthenticatedException();
     }
 }
