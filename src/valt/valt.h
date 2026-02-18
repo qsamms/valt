@@ -1,14 +1,14 @@
 #pragma once
 
 #include <db/database_mixin.h>
-#include <permissions/permissions_mixin.h>
-#include <queue/queue_mixin.h>
+#include <perms/permissions_mixin.h>
+#include <pubsub/pubsub_mixin.h>
 #include <types/types.h>
 
 #include <cstdint>
 #include <string>
 
-class Valt : public PermissionsMixin, DataBaseMixin, QueueMixin {
+class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
    private:
     Valt() = default;
     ~Valt() = default;

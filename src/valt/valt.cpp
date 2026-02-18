@@ -17,6 +17,7 @@ std::string Valt::execute(const std::string& request_string, const int& client_f
         req.ssl = ssl;
 
         validate_authenticated(req);
+        validate_session_mode(req);
 
         std::string response = performRequest(req);
         return response;
@@ -50,7 +51,11 @@ std::string Valt::performRequest(const Request& req) {
         case Operation::DELETE_QUEUE:
             return deleteQueue(req);
         case Operation::SUBSCRIBE:
+            set_client_mode(req.client_fd, SessionMode::PUBSUB);
             return subscribe(req);
+        case Operation::UNSUBSCRIBE:
+            set_client_mode(req.client_fd, SessionMode::DB);
+            return unsubscribe(req);
         case Operation::PUBLISH:
             return publish(req);
         default:
@@ -114,6 +119,8 @@ Request Valt::parseRequest(const std::string& request_string) {
         case Operation::SUBSCRIBE:
             if (num_args != 2) throw InvalidCommandException();
             key = args[1];
+            break;
+        case Operation::UNSUBSCRIBE:
             break;
         case Operation::PUBLISH:
             if (num_args != 3) throw InvalidCommandException();

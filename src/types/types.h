@@ -16,13 +16,20 @@ enum class Operation {
     EXPIRE,
     FLUSH,
     SUBSCRIBE,
+    UNSUBSCRIBE,
     PUBLISH,
     CREATE_QUEUE,
     DELETE_QUEUE,
 };
 
+enum class SessionMode {
+    DB,
+    PUBSUB,
+};
+
 struct Connection {
     bool authenticated;
+    SessionMode mode;
 };
 
 struct Request {
@@ -44,6 +51,7 @@ const std::unordered_map<std::string, Operation> op_mapping = {
     {"delete", Operation::DELETE},
     {"flush", Operation::FLUSH},
     {"subscribe", Operation::SUBSCRIBE},
+    {"unsubscribe", Operation::UNSUBSCRIBE},
     {"publish", Operation::PUBLISH},
     {"create_queue", Operation::CREATE_QUEUE},
     {"delete_queue", Operation::DELETE_QUEUE}};

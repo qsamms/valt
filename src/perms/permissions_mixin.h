@@ -15,6 +15,9 @@ class PermissionsMixin {
 
     void disable_authentication();
     void validate_authenticated(const Request& req);
-    void create_session(int client_fd);
-    void end_session(int client_fd);
+    void create_session(const int& client_fd);
+    void end_session(const int& client_fd);
+
+    void set_client_mode(const int& client_fd, const SessionMode& mode);
+    void validate_session_mode(const Request& req);
 };

@@ -11,30 +11,31 @@
 #include <unordered_set>
 #include <vector>
 
-struct QueueObject {
+struct Subscription {
     int fd;
     SSL* ssl;
 
-    bool operator==(const QueueObject& other) const { return fd == other.fd; }
+    bool operator==(const Subscription& other) const { return fd == other.fd; }
 };
 
 namespace std {
 template <>
-struct hash<QueueObject> {
-    size_t operator()(const QueueObject& qo) const { return std::hash<int>{}(qo.fd); }
+struct hash<Subscription> {
+    size_t operator()(const Subscription& qo) const { return std::hash<int>{}(qo.fd); }
 };
 }  // namespace std
 
-class QueueMixin {
+class PubSubMixin {
    private:
-    std::unordered_map<std::string, std::unordered_set<QueueObject>> q_clients;
+    std::unordered_map<std::string, std::unordered_set<Subscription>> subs;
 
    public:
-    QueueMixin();
+    PubSubMixin();
 
     std::string deleteQueue(const Request& req);
     std::string createQueue(const Request& req);
     std::string subscribe(const Request& req);
+    std::string unsubscribe(const Request& req);
     std::string publish(const Request& req);
     std::string flush_queues();
 };
