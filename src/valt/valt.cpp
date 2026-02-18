@@ -121,6 +121,8 @@ Request Valt::parseRequest(const std::string& request_string) {
             key = args[1];
             break;
         case Operation::UNSUBSCRIBE:
+            if (num_args != 2) throw InvalidCommandException();
+            key = args[1];
             break;
         case Operation::PUBLISH:
             if (num_args != 3) throw InvalidCommandException();
