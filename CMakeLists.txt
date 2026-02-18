@@ -13,8 +13,8 @@ add_executable(
     src/cb/callbacks.cpp
     src/valt/valt.cpp
     src/db/database_mixin.cpp
-    src/queue/queue_mixin.cpp
-    src/permissions/permissions_mixin.cpp
+    src/pubsub/pubsub_mixin.cpp
+    src/perms/permissions_mixin.cpp
     src/utils/utils.cpp
 )
 
