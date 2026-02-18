@@ -9,12 +9,6 @@
 
 namespace {
 
-struct WatcherData {
-    std::string buffer;
-    uint32_t total_bytes;
-    SSL* ssl;
-};
-
 enum class ConnectionPolicy {
     CLOSE,
     KEEPALIVE,
@@ -74,6 +68,8 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
 
     if (revents & EV_READ) {
         WatcherData* rd = static_cast<WatcherData*>(watcher->data);
+        assert(rd != nullptr);
+
         int bytes_read = 0;
         if (rd->ssl != nullptr) {
             bytes_read = SSL_read(rd->ssl, buffer, sizeof(buffer));
@@ -94,7 +90,6 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
 
         bool first_read = rd->buffer.size() == 0;
         if (first_read) {
-            WatcherData* rd;
             if (bytes_read >= 4) {
                 uint32_t message_length = 0;
                 memcpy(reinterpret_cast<char*>(&message_length), buffer, 4);
@@ -146,7 +141,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
             Valt& valt = Valt::getInstance();
             std::string response = valt.execute(read_buffer, watcher->fd, rd->ssl);
             create_write_watcher(watcher->fd, response, rd->ssl);
-            watcher->data = nullptr;
+            watcher->data = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = rd->ssl};
         }
     }
 }
@@ -202,28 +197,28 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         SSL_CTX* ssl_ctx = static_cast<SSL_CTX*>(watcher->data);
         if (ssl_ctx == nullptr) {
             WatcherData* wd = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = nullptr};
-            create_read_watcher(client_fd, static_cast<void*>(wd));
+            create_read_watcher(client_fd, wd);
         } else {
             SSL* ssl = SSL_new(ssl_ctx);
             SSL_set_fd(ssl, client_fd);
             SSL_set_accept_state(ssl);  // server mode
 
             WatcherData* wd = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = ssl};
-
-            ev_io* tls_handshake_watcher = new ev_io{};
-            tls_handshake_watcher->data = wd;
-            ev_io_init(tls_handshake_watcher, tls_handshake_cb, client_fd, EV_READ);
-            ev_io_start(EV_DEFAULT, tls_handshake_watcher);
+            create_read_watcher(client_fd, wd);
         }
     }
 }
 
 }  // namespace
 
-void create_read_watcher(int fd, void* data) {
+void create_read_watcher(int fd, WatcherData* wd) {
     ev_io* watcher = new ev_io{};
-    watcher->data = data;
-    ev_io_init(watcher, client_read_cb, fd, EV_READ);
+    watcher->data = static_cast<void*>(wd);
+    if (wd != nullptr && wd->ssl != nullptr) {
+        ev_io_init(watcher, tls_handshake_cb, fd, EV_READ);
+    } else {
+        ev_io_init(watcher, client_read_cb, fd, EV_READ);
+    }
     ev_io_start(EV_DEFAULT, watcher);
 }
 
