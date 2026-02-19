@@ -3,14 +3,21 @@
 #include <db/database_mixin.h>
 #include <perms/permissions_mixin.h>
 #include <pubsub/pubsub_mixin.h>
-#include <types/types.h>
 
 #include <cstdint>
+#include <mutex>
+#include <stdexcept>
 #include <string>
+
+#include "valt_config.h"
 
 class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
    private:
-    Valt() = default;
+    const ValtConfig* cfg;
+
+    Valt() = delete;
+    Valt(const ValtConfig* valt_config)
+        : cfg(valt_config), PermissionsMixin(cfg), DataBaseMixin(cfg), PubSubMixin(cfg) {}
     ~Valt() = default;
 
     Valt(const Valt&) = delete;
@@ -25,8 +32,19 @@ class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
    public:
     std::string execute(const std::string&, const int& client_fd, SSL* ssl);
 
-    static Valt& getInstance() {
-        static Valt instance;
-        return instance;
+    static Valt& getInstance(const ValtConfig* cfg = nullptr) {
+        static std::mutex mtx;
+        static Valt* instance = nullptr;
+
+        std::lock_guard<std::mutex> lock(mtx);
+
+        if (instance == nullptr) {
+            if (cfg == nullptr) {
+                throw std::runtime_error("Valt must be initialized with its config");
+            }
+            instance = new Valt(cfg);
+        }
+
+        return *instance;
     }
 };

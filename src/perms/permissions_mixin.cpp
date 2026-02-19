@@ -2,7 +2,8 @@
 
 #include <utils/exceptions.h>
 
-PermissionsMixin::PermissionsMixin() {
+PermissionsMixin::PermissionsMixin(const ValtConfig* cfg) {
+    valt_config = cfg;
     authentication_enabled = true;
     conns = std::unordered_map<int, Connection>();
     char* key = std::getenv("VALT_MASTER_KEY");

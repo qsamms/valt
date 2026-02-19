@@ -1,6 +1,7 @@
 #include "database_mixin.h"
 
-DataBaseMixin::DataBaseMixin() {
+DataBaseMixin::DataBaseMixin(const ValtConfig* cfg) {
+    valt_config = cfg;
     db = std::unordered_map<std::string, std::unique_ptr<DBNode>>();
 
     head = new DBNode{.value = "", .expiration = 0, .next = nullptr, .prev = nullptr};

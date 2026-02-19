@@ -5,6 +5,7 @@
 #include <types/types.h>
 #include <utils/constants.h>
 #include <utils/exceptions.h>
+#include <valt/valt_config.h>
 
 #include <algorithm>
 #include <string>
@@ -27,10 +28,12 @@ struct hash<Subscription> {
 
 class PubSubMixin {
    private:
+    const ValtConfig* valt_config;
     std::unordered_map<std::string, std::unordered_set<Subscription>> subs;
 
    public:
-    PubSubMixin();
+    PubSubMixin() = delete;
+    PubSubMixin(const ValtConfig* cfg);
 
     std::string deleteQueue(const Request& req);
     std::string createQueue(const Request& req);

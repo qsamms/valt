@@ -1,9 +1,9 @@
 #include "utils.h"
 
 #include <arpa/inet.h>
-#include <conf/valt_config.h>
 #include <fcntl.h>
 #include <types/types.h>
+#include <valt/valt.h>
 
 #include <algorithm>
 #include <chrono>

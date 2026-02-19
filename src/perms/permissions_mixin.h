@@ -1,15 +1,18 @@
 #include <types/types.h>
+#include <valt/valt_config.h>
 
 #include <unordered_map>
 
 class PermissionsMixin {
    private:
+    const ValtConfig* valt_config;
     std::string master_key;
     bool authentication_enabled;
     std::unordered_map<int, Connection> conns;
 
    public:
-    PermissionsMixin();
+    PermissionsMixin() = delete;
+    PermissionsMixin(const ValtConfig* cfg);
 
     std::string authenticate(const Request& req);
 

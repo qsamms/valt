@@ -4,6 +4,7 @@
 #include <utils/constants.h>
 #include <utils/exceptions.h>
 #include <utils/utils.h>
+#include <valt/valt_config.h>
 
 #include <memory>
 #include <string>
@@ -25,6 +26,7 @@ class DataBaseMixin {
     the list is always the LRU. The map links a key directly to its node for quick lookups.
     */
    private:
+    const ValtConfig* valt_config;
     DBNode* head;
     DBNode* tail;
     std::unordered_map<std::string, std::unique_ptr<DBNode>> db;
@@ -34,7 +36,8 @@ class DataBaseMixin {
     void unlink(DBNode* node);
 
    public:
-    DataBaseMixin();
+    DataBaseMixin() = delete;
+    DataBaseMixin(const ValtConfig* cfg);
     ~DataBaseMixin();
 
     std::string set(const Request& req);

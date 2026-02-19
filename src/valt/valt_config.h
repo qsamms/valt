@@ -1,6 +1,6 @@
 #pragma once
 
-#include <CLI/CLI.hpp>
+#include <cstdint>
 #include <string>
 
 struct ValtConfig {
@@ -11,4 +11,5 @@ struct ValtConfig {
     std::string private_key = "";
     int max_connections = 10000;
     int max_pending_connections = 10;
+    uint64_t max_memory = 0;
 };

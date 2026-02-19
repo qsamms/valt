@@ -1,6 +1,7 @@
 #include "pubsub_mixin.h"
 
-PubSubMixin::PubSubMixin() {
+PubSubMixin::PubSubMixin(const ValtConfig* cfg) {
+    valt_config = cfg;
     subs = std::unordered_map<std::string, std::unordered_set<Subscription>>();
 }
 
