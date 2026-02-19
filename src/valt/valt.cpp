@@ -43,8 +43,8 @@ std::string Valt::performRequest(const Request& req) {
         case Operation::PERSIST:
             return persist(req);
         case Operation::FLUSH:
-            flush_db();
-            flush_queues();
+            DataBaseMixin::flush();
+            PubSubMixin::flush();
             return OK;
         case Operation::CREATE_QUEUE:
             return createQueue(req);
@@ -58,6 +58,8 @@ std::string Valt::performRequest(const Request& req) {
             return unsubscribe(req);
         case Operation::PUBLISH:
             return publish(req);
+        case Operation::EVICT:
+            return evict(req);
         default:
             throw UnknownCommandException();
     }
@@ -129,6 +131,11 @@ Request Valt::parseRequest(const std::string& request_string) {
             key = args[1];
             value = args[2];
             break;
+        case Operation::EVICT:
+            if (num_args != 1) throw InvalidCommandException();
+            break;
+        default:
+            throw UnknownCommandException();
     }
 
     return Request{.op = operation, .key = key, .value = value, .expiration = expiration};

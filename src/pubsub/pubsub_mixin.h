@@ -37,5 +37,5 @@ class PubSubMixin {
     std::string subscribe(const Request& req);
     std::string unsubscribe(const Request& req);
     std::string publish(const Request& req);
-    std::string flush_queues();
+    std::string flush();
 };

@@ -20,6 +20,7 @@ enum class Operation {
     PUBLISH,
     CREATE_QUEUE,
     DELETE_QUEUE,
+    EVICT,
 };
 
 enum class SessionMode {
@@ -43,6 +44,7 @@ struct Request {
 
 const std::unordered_map<std::string, Operation> op_mapping = {
     {"authenticate", Operation::AUTHENTICATE},
+    {"evict", Operation::EVICT},
     {"get", Operation::GET},
     {"set", Operation::SET},
     {"setex", Operation::SETEX},

@@ -47,7 +47,7 @@ std::string PubSubMixin::publish(const Request& req) {
     return OK;
 }
 
-std::string PubSubMixin::flush_queues() {
+std::string PubSubMixin::flush() {
     subs.clear();
     return OK;
 }
