@@ -4,7 +4,6 @@ import socket
 import time
 import struct
 
-
 HOST = "127.0.0.1"
 PORT = 1738
 SERVER_EXECUTABLE_PATH = "build/valt"
@@ -20,7 +19,6 @@ class ValtTestCase(unittest.TestCase):
             cls.proc = subprocess.Popen([SERVER_EXECUTABLE_PATH])
             cls.attemptConnection()
 
-        
     @classmethod
     def attemptConnection(cls):
         for _ in range(10):
@@ -31,7 +29,7 @@ class ValtTestCase(unittest.TestCase):
                 time.sleep(1)
         else:
             raise RuntimeError("Server failed to start")
-        
+
     def getSocket(self):
         sock = socket.create_connection((HOST, PORT), timeout=0.5)
         self.tempsockets.add(sock)
@@ -65,7 +63,7 @@ class ValtTestCase(unittest.TestCase):
             data += chunk
 
         return data.decode("utf-8")
-    
+
     def setUp(self):
         self.sock = socket.create_connection((HOST, PORT), timeout=0.5)
 

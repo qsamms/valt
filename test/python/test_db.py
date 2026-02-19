@@ -4,7 +4,7 @@ import struct
 from test.python.valt_test import ValtTestCase
 
 
-class TestDB(ValtTestCase): 
+class TestDB(ValtTestCase):
     def test_set_get(self):
         self.sendall("set key 10")
         reply = self.recv_str()
@@ -38,7 +38,7 @@ class TestDB(ValtTestCase):
         length_bytes = struct.pack(">I", len(entire_message))
 
         self.sock.setblocking(False)
-        self.sock.sendall(length_bytes + "set ".encode('utf-8'))
+        self.sock.sendall(length_bytes + "set ".encode("utf-8"))
         with self.assertRaises(BlockingIOError):
             self.recv_str()
 
@@ -131,4 +131,3 @@ class TestDB(ValtTestCase):
         self.sendall("get key2")
         reply = self.recv_str()
         self.assertEqual(reply, "ERR_KEY_NOT_FOUND")
-

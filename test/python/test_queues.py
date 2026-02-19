@@ -1,5 +1,5 @@
-
 from test.python.valt_test import ValtTestCase
+
 
 class TestQueues(ValtTestCase):
     def test_queue_pub_sub(self):

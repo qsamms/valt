@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cb/callbacks.h>
+#include <net/network_layer.h>
 #include <openssl/ssl.h>
 #include <types/types.h>
 #include <utils/constants.h>
