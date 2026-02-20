@@ -10,11 +10,10 @@
 
 const std::regex int_re(R"(^[+-]?\d+$)");
 
-std::string Valt::execute(const std::string& request_string, const int& client_fd, SSL* ssl) {
+std::string Valt::execute(const std::string& request_string, const int& client_fd) {
     try {
         Request req = parseRequest(request_string);
         req.client_fd = client_fd;
-        req.ssl = ssl;
 
         validate_authenticated(req);
         validate_session_mode(req);

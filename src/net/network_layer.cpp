@@ -175,7 +175,7 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         if (state->buffer.size() == state->total_bytes) {
             Valt& valt = Valt::getInstance();
             spdlog::info("{}", state->buffer);
-            std::string response = valt.execute(state->buffer, watcher->fd, ssl);
+            std::string response = valt.execute(state->buffer, watcher->fd);
             WatcherState* write_state = c->write_state.get();
             write_state->buffer = std::move(utils::length_prefixed(response));
             write_state->total_bytes = 0;

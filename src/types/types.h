@@ -30,7 +30,6 @@ enum class SessionMode {
 
 struct Request {
     int client_fd;
-    SSL* ssl;
     Operation op;
     std::string key;
     std::string value;

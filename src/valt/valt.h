@@ -33,7 +33,7 @@ class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
     std::string performRequest(const Request&);
 
    public:
-    std::string execute(const std::string&, const int& client_fd, SSL* ssl);
+    std::string execute(const std::string&, const int& client_fd);
 
     static Valt& getInstance(const ValtConfig* cfg = nullptr) {
         static std::mutex mtx;
