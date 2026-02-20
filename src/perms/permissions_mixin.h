@@ -8,7 +8,6 @@ class PermissionsMixin {
     const ValtConfig* valt_config;
     std::string master_key;
     bool authentication_enabled;
-    std::unordered_map<int, Connection> conns;
 
    public:
     PermissionsMixin() = delete;

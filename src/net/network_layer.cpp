@@ -7,58 +7,88 @@
 
 #include "spdlog/spdlog.h"
 
-namespace {
+std::unordered_map<int, std::unique_ptr<Connection>>& get_connections() {
+    static std::unordered_map<int, std::unique_ptr<Connection>> conns;
+    return conns;
+}
 
-enum class ConnectionPolicy {
-    CLOSE,
-    KEEPALIVE,
-};
+void pubsub_write_cb(EV_P_ ev_io* watcher, int revents) {
+    if (!(revents & EV_WRITE)) return;
 
-void cleanup_watcher(EV_P_ ev_io* watcher, const ConnectionPolicy& policy) {
-    ev_io_stop(EV_A_ watcher);
-    if (policy == ConnectionPolicy::CLOSE) {
-        WatcherData* wd = static_cast<WatcherData*>(watcher->data);
-        if (wd != nullptr && wd->ssl) {
-            SSL_shutdown(wd->ssl);
-            SSL_free(wd->ssl);
-        }
-        close(watcher->fd);
-        Valt& valt = Valt::getInstance();
-        valt.end_session(watcher->fd);
+    auto& conns = get_connections();
+    if (!conns.contains(watcher->fd)) {
+        ev_io_stop(EV_A_ watcher);
+        delete watcher;
+        return;
     }
-    if (watcher->data != nullptr) delete static_cast<WatcherData*>(watcher->data);
-    delete watcher;
+    Connection* c = conns.at(watcher->fd).get();
+    std::deque<std::string>& q = c->write_queue;
+
+    while (!q.empty()) {
+        std::string& front = q.front();
+
+        SSL* ssl = c->ssl;
+        int bytes_sent = 0;
+
+        if (ssl != nullptr) {
+            bytes_sent = SSL_write(ssl, front.c_str(), front.size());
+            if (bytes_sent <= 0) {
+                int err = SSL_get_error(ssl, bytes_sent);
+                if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) return;
+                conns.erase(watcher->fd);
+                return;
+            }
+        } else {
+            bytes_sent = send(watcher->fd, front.c_str(), front.size(), 0);
+            if (bytes_sent <= 0) {
+                if (errno == EAGAIN || errno == EWOULDBLOCK) return;
+                conns.erase(watcher->fd);
+                return;
+            }
+        }
+
+        front = front.substr(bytes_sent);
+        if (front.empty()) {
+            q.pop_front();
+        }
+    }
+
+    c->stop_write_watcher();
 }
 
 void client_write_cb(EV_P_ ev_io* watcher, int revents) {
     if (revents & EV_WRITE) {
-        if (watcher->data == nullptr) {
-            cleanup_watcher(EV_A_ watcher, ConnectionPolicy::KEEPALIVE);
+        auto& conns = get_connections();
+        if (!conns.contains(watcher->fd)) {
+            ev_io_stop(EV_A_ watcher);
+            delete watcher;
             return;
         }
+        Connection* c = conns.at(watcher->fd).get();
+        SSL* ssl = c->ssl;
+        WatcherState* state = c->write_state.get();
 
-        WatcherData* data = static_cast<WatcherData*>(watcher->data);
         int bytes_sent = 0;
-        if (data->ssl != nullptr) {
-            bytes_sent = SSL_write(data->ssl, data->buffer.c_str(), data->buffer.size());
+        if (ssl != nullptr) {
+            bytes_sent = SSL_write(ssl, state->buffer.c_str(), state->buffer.size());
             if (bytes_sent <= 0) {
-                int err = SSL_get_error(data->ssl, bytes_sent);
+                int err = SSL_get_error(ssl, bytes_sent);
                 if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) return;
-                cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
+                conns.erase(watcher->fd);
                 return;
             }
         } else {
-            bytes_sent = send(watcher->fd, data->buffer.c_str(), data->buffer.size(), 0);
+            bytes_sent = send(watcher->fd, state->buffer.c_str(), state->buffer.size(), 0);
             if (bytes_sent <= 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-                cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
+                conns.erase(watcher->fd);
                 return;
             }
         }
 
-        data->buffer = data->buffer.substr(bytes_sent);
-        if (data->buffer.empty()) {
-            cleanup_watcher(EV_A_ watcher, ConnectionPolicy::KEEPALIVE);
+        state->buffer = state->buffer.substr(bytes_sent);
+        if (state->buffer.empty()) {
+            c->stop_write_watcher();
         }
     }
 }
@@ -67,45 +97,51 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
     char buffer[1024];
 
     if (revents & EV_READ) {
-        WatcherData* rd = static_cast<WatcherData*>(watcher->data);
-        assert(rd != nullptr);
+        auto& conns = get_connections();
+        if (!conns.contains(watcher->fd)) {
+            ev_io_stop(EV_A_ watcher);
+            delete watcher;
+            return;
+        }
+        Connection* c = conns.at(watcher->fd).get();
+        WatcherState* state = c->read_state.get();
+        SSL* ssl = c->ssl;
 
         int bytes_read = 0;
-        if (rd->ssl != nullptr) {
-            bytes_read = SSL_read(rd->ssl, buffer, sizeof(buffer));
+        if (ssl != nullptr) {
+            bytes_read = SSL_read(ssl, buffer, sizeof(buffer));
             if (bytes_read <= 0) {
-                int err = SSL_get_error(rd->ssl, bytes_read);
+                int err = SSL_get_error(ssl, bytes_read);
                 if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) return;
-                cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
+                conns.erase(watcher->fd);
                 return;
             }
         } else {
             bytes_read = recv(watcher->fd, buffer, sizeof(buffer), 0);
             if (bytes_read <= 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) return;
-                cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
+                conns.erase(watcher->fd);
                 return;
             }
         }
 
-        bool first_read = rd->buffer.size() == 0;
+        bool first_read = state->buffer.size() == 0;
         if (first_read) {
             if (bytes_read >= 4) {
                 uint32_t message_length = 0;
                 memcpy(reinterpret_cast<char*>(&message_length), buffer, 4);
                 message_length = ntohl(message_length);
                 std::string message = std::string(buffer + 4, bytes_read - 4);
-                rd->buffer = message;
-                rd->total_bytes = message_length;
+                state->buffer = message;
+                state->total_bytes = message_length;
             } else {
-                rd->buffer = std::string(buffer, bytes_read);
-                rd->total_bytes = 0;
+                state->buffer = std::string(buffer, bytes_read);
+                state->total_bytes = 0;
             }
-            watcher->data = rd;
         } else {
-            std::string& read_buffer = rd->buffer;
+            std::string& read_buffer = state->buffer;
 
-            if (rd->total_bytes == 0) {
+            if (state->total_bytes == 0) {
                 // We still don't know the data length
                 uint32_t total_bytes_so_far = read_buffer.size() + bytes_read;
                 if (total_bytes_so_far >= 4) {
@@ -115,63 +151,69 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
                     memcpy(reinterpret_cast<char*>(&message_length) + read_buffer.size(), buffer,
                            4 - read_buffer.size());
                     message_length = ntohl(message_length);
-                    rd->total_bytes = message_length;
+                    state->total_bytes = message_length;
 
                     uint32_t message_bytes = total_bytes_so_far - 4;
                     if (message_bytes > 0) {
                         uint32_t offset = bytes_read - message_bytes;
-                        rd->buffer = std::string(buffer + offset, bytes_read - offset);
+                        state->buffer = std::string(buffer + offset, bytes_read - offset);
                     }
                 } else {
-                    rd->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
+                    state->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
                 }
             } else {
                 // We know the data length we just haven't received it all yet
-                if (read_buffer.size() + bytes_read >= rd->total_bytes) {
-                    rd->buffer = std::string(
-                        read_buffer + std::string(buffer, rd->total_bytes - read_buffer.size()));
+                if (read_buffer.size() + bytes_read >= state->total_bytes) {
+                    state->buffer = std::string(
+                        read_buffer + std::string(buffer, state->total_bytes - read_buffer.size()));
                 } else {
-                    rd->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
+                    state->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
                 }
             }
         }
 
-        std::string read_buffer = rd->buffer;
-        if (rd->total_bytes == read_buffer.size()) {
+        if (state->buffer.size() == state->total_bytes) {
             Valt& valt = Valt::getInstance();
-            std::string response = valt.execute(read_buffer, watcher->fd, rd->ssl);
-            create_write_watcher(watcher->fd, response, rd->ssl);
-            watcher->data = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = rd->ssl};
+            spdlog::info("{}", state->buffer);
+            std::string response = valt.execute(state->buffer, watcher->fd, ssl);
+            WatcherState* write_state = c->write_state.get();
+            write_state->buffer = std::move(utils::length_prefixed(response));
+            write_state->total_bytes = 0;
+            c->start_write_watcher(client_write_cb);
+            c->reset_state(c->read_state.get());
         }
     }
 }
 
 void tls_handshake_cb(EV_P_ ev_io* watcher, int revents) {
-    WatcherData* data = static_cast<WatcherData*>(watcher->data);
-    SSL* ssl = data->ssl;
+    auto& conns = get_connections();
+    if (!conns.contains(watcher->fd)) {
+        ev_io_stop(EV_A_ watcher);
+        delete watcher;
+        return;
+    }
+    Connection* c = conns.at(watcher->fd).get();
+    SSL* ssl = c->ssl;
 
     int result = SSL_do_handshake(ssl);
     if (result == 1) {
         // Handshake complete — switch to normal read watcher
-        ev_io_stop(EV_A_ watcher);
-        ev_io_init(watcher, client_read_cb, watcher->fd, EV_READ);
-        ev_io_start(EV_A_ watcher);
+        c->stop_write_watcher();
+        c->stop_read_watcher();
+        c->start_read_watcher(client_read_cb);
         return;
     }
 
     int err = SSL_get_error(ssl, result);
     if (err == SSL_ERROR_WANT_READ) {
-        ev_set_cb(watcher, tls_handshake_cb);
-        ev_io_stop(EV_A_ watcher);
-        ev_io_set(watcher, watcher->fd, EV_READ);
-        ev_io_start(EV_A_ watcher);
+        c->stop_write_watcher();
+        c->start_read_watcher(tls_handshake_cb);
     } else if (err == SSL_ERROR_WANT_WRITE) {
-        ev_io_stop(EV_A_ watcher);
-        ev_io_set(watcher, watcher->fd, EV_WRITE);
-        ev_io_start(EV_A_ watcher);
+        c->stop_read_watcher();
+        c->start_write_watcher(tls_handshake_cb);
     } else {
         ERR_print_errors_fp(stderr);
-        cleanup_watcher(EV_A_ watcher, ConnectionPolicy::CLOSE);
+        conns.erase(watcher->fd);
     }
 }
 
@@ -191,51 +233,21 @@ void accept_connection_cb(EV_P_ ev_io* watcher, int revents) {
         int client_port = ntohs(address.sin_port);
         spdlog::debug("Accepted connection from: {}", client_ip);
 
-        Valt& valt = Valt::getInstance();
-        valt.create_session(client_fd);
-
+        auto& conns = get_connections();
         SSL_CTX* ssl_ctx = static_cast<SSL_CTX*>(watcher->data);
         if (ssl_ctx == nullptr) {
-            WatcherData* wd = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = nullptr};
-            create_read_watcher(client_fd, wd);
+            conns.try_emplace(client_fd, std::make_unique<Connection>(client_fd));
+            Connection* c = conns.at(client_fd).get();
+            c->start_read_watcher(client_read_cb);
         } else {
             SSL* ssl = SSL_new(ssl_ctx);
             SSL_set_fd(ssl, client_fd);
             SSL_set_accept_state(ssl);  // server mode
-
-            WatcherData* wd = new WatcherData{.buffer = "", .total_bytes = 0, .ssl = ssl};
-            create_read_watcher(client_fd, wd);
+            conns.try_emplace(client_fd, std::make_unique<Connection>(client_fd, ssl));
+            Connection* c = conns.at(client_fd).get();
+            c->start_read_watcher(tls_handshake_cb);
         }
     }
-}
-
-}  // namespace
-
-void create_read_watcher(int fd, WatcherData* wd) {
-    ev_io* watcher = new ev_io{};
-    watcher->data = static_cast<void*>(wd);
-    if (wd != nullptr && wd->ssl != nullptr) {
-        ev_io_init(watcher, tls_handshake_cb, fd, EV_READ);
-    } else {
-        ev_io_init(watcher, client_read_cb, fd, EV_READ);
-    }
-    ev_io_start(EV_DEFAULT, watcher);
-}
-
-void create_write_watcher(int fd, std::string response, SSL* ssl) {
-    ev_io* watcher = new ev_io{};
-
-    uint32_t response_size = htonl(response.size());
-    char length_prefix[4];
-    memcpy(length_prefix, &response_size, 4);
-
-    WatcherData* wd =
-        new WatcherData{.buffer = std::string(std::string(length_prefix, 4) + response),
-                        .total_bytes = 0,
-                        .ssl = ssl};
-    watcher->data = wd;
-    ev_io_init(watcher, client_write_cb, fd, EV_WRITE);
-    ev_io_start(EV_DEFAULT, watcher);
 }
 
 void create_accept_watcher(const int& fd, SSL_CTX* ssl_ctx) {

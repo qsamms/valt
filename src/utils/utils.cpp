@@ -136,4 +136,13 @@ SSL_CTX* create_ssl_context(const std::string& cert_path, const std::string& key
     return ctx;
 }
 
+std::string length_prefixed(const std::string& s) {
+    uint32_t response_size = htonl(static_cast<uint32_t>(s.size()));
+    std::string result;
+    result.resize(4);
+    memcpy(result.data(), &response_size, 4);
+    result += s;
+    return result;
+}
+
 }  // namespace utils

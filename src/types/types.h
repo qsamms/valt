@@ -28,11 +28,6 @@ enum class SessionMode {
     PUBSUB,
 };
 
-struct Connection {
-    bool authenticated;
-    SessionMode mode;
-};
-
 struct Request {
     int client_fd;
     SSL* ssl;

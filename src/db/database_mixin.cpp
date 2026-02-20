@@ -4,16 +4,11 @@ DataBaseMixin::DataBaseMixin(const ValtConfig* cfg) {
     valt_config = cfg;
     db = std::unordered_map<std::string, std::unique_ptr<DBNode>>();
 
-    head = new DBNode{.value = "", .expiration = 0, .next = nullptr, .prev = nullptr};
-    tail = new DBNode{.value = "", .expiration = 0, .next = nullptr, .prev = nullptr};
+    head = std::make_unique<DBNode>();
+    tail = std::make_unique<DBNode>();
 
-    head->next = tail;
-    tail->prev = head;
-}
-
-DataBaseMixin::~DataBaseMixin() {
-    delete head;
-    delete tail;
+    head->next = tail.get();
+    tail->prev = head.get();
 }
 
 void DataBaseMixin::move_to_front(DBNode* node) {
@@ -37,7 +32,7 @@ void DataBaseMixin::move_to_front(DBNode* node) {
 
     node->next = firstNode;
     firstNode->prev = node;
-    node->prev = head;
+    node->prev = head.get();
 }
 
 void DataBaseMixin::remove_node(DBNode* node) {
@@ -134,10 +129,10 @@ std::string DataBaseMixin::evict(const Request& req) {
 }
 
 std::string DataBaseMixin::flush() {
-    head->next = tail;
+    head->next = tail.get();
     head->prev = nullptr;
     tail->next = nullptr;
-    tail->prev = head;
+    tail->prev = head.get();
     db.clear();
     return OK;
 }

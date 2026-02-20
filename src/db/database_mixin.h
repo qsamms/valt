@@ -15,8 +15,8 @@ struct DBNode {
     std::string value;
     int64_t expiration;
 
-    DBNode* next;
-    DBNode* prev;
+    DBNode* next = nullptr;
+    DBNode* prev = nullptr;
 };
 
 class DataBaseMixin {
@@ -27,8 +27,8 @@ class DataBaseMixin {
     */
    private:
     const ValtConfig* valt_config;
-    DBNode* head;
-    DBNode* tail;
+    std::unique_ptr<DBNode> head;
+    std::unique_ptr<DBNode> tail;
     std::unordered_map<std::string, std::unique_ptr<DBNode>> db;
 
     void move_to_front(DBNode* node);
@@ -38,7 +38,7 @@ class DataBaseMixin {
    public:
     DataBaseMixin() = delete;
     DataBaseMixin(const ValtConfig* cfg);
-    ~DataBaseMixin();
+    ~DataBaseMixin() = default;
 
     std::string set(const Request& req);
     std::string get(const Request& req);

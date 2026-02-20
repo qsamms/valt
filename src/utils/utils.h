@@ -25,4 +25,6 @@ int init_server(int port, int max_pending_connections);
 
 SSL_CTX* create_ssl_context(const std::string& cert_path, const std::string& key_path);
 
+std::string length_prefixed(const std::string& s);
+
 }  // namespace utils
