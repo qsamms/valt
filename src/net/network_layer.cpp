@@ -7,6 +7,9 @@
 
 #include "spdlog/spdlog.h"
 
+#define LENGTH_PREFIX_SIZE 4
+#define MAX_MESSAGE_LENGTH_BYTES 67108864  // 64MB
+
 std::unordered_map<int, std::unique_ptr<Connection>>& get_connections() {
     static std::unordered_map<int, std::unique_ptr<Connection>> conns;
     return conns;
@@ -104,6 +107,8 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
     }
     Connection* c = conns.at(watcher->fd).get();
     WatcherState* state = c->read_state.get();
+    std::string& read_buffer = state->buffer;
+    uint32_t& message_length = state->message_length;
     SSL* ssl = c->ssl;
 
     char buffer[1024];
@@ -126,60 +131,57 @@ void client_read_cb(EV_P_ ev_io* watcher, int revents) {
         }
     }
 
-    bool first_read = state->buffer.size() == 0;
+    bool first_read = read_buffer.size() == 0;
     if (first_read) {
-        if (bytes_read >= 4) {
-            uint32_t message_length = 0;
-            memcpy(reinterpret_cast<char*>(&message_length), buffer, 4);
+        if (bytes_read >= LENGTH_PREFIX_SIZE) {
+            memcpy(&message_length, buffer, LENGTH_PREFIX_SIZE);
             message_length = ntohl(message_length);
-            std::string message = std::string(buffer + 4, bytes_read - 4);
-            state->buffer = message;
-            state->total_bytes = message_length;
+            std::string message = std::string(buffer + LENGTH_PREFIX_SIZE, bytes_read - LENGTH_PREFIX_SIZE);
+            read_buffer = std::move(message);
         } else {
-            state->buffer = std::string(buffer, bytes_read);
-            state->total_bytes = 0;
+            std::string message = std::string(buffer, bytes_read);
+            read_buffer = std::move(message);
+            message_length = 0;
         }
     } else {
-        std::string& read_buffer = state->buffer;
-
-        if (state->total_bytes == 0) {
-            // We still don't know the data length
-            uint32_t total_bytes_so_far = read_buffer.size() + bytes_read;
-            if (total_bytes_so_far >= 4) {
-                uint32_t message_length = 0;
-                memcpy(reinterpret_cast<char*>(&message_length), read_buffer.c_str(),
-                       read_buffer.size());
-                memcpy(reinterpret_cast<char*>(&message_length) + read_buffer.size(), buffer,
-                       4 - read_buffer.size());
+        // Data length unknown
+        if (state->message_length == 0) {
+            uint32_t total_bytes = read_buffer.size() + bytes_read;
+            if (total_bytes >= LENGTH_PREFIX_SIZE) {
+                memcpy(&message_length, read_buffer.c_str(), read_buffer.size());
+                memcpy(&message_length + read_buffer.size(), buffer, LENGTH_PREFIX_SIZE - read_buffer.size());
                 message_length = ntohl(message_length);
-                state->total_bytes = message_length;
 
-                uint32_t message_bytes = total_bytes_so_far - 4;
-                if (message_bytes > 0) {
-                    uint32_t offset = bytes_read - message_bytes;
-                    state->buffer = std::string(buffer + offset, bytes_read - offset);
+                if (message_length > MAX_MESSAGE_LENGTH_BYTES) {
+                    conns.erase(watcher->fd);
+                    return;
+                }
+
+                uint32_t message_length_bytes = total_bytes - LENGTH_PREFIX_SIZE;
+                if (message_length_bytes > 0) {
+                    uint32_t message_offset = bytes_read - message_length_bytes;
+                    read_buffer = std::move(std::string(buffer + message_offset, bytes_read - message_offset));
                 }
             } else {
-                state->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
+                read_buffer.append(std::string(buffer, bytes_read));
             }
-        } else {
-            // We know the data length we just haven't received it all yet
-            if (read_buffer.size() + bytes_read >= state->total_bytes) {
-                state->buffer = std::string(
-                    read_buffer + std::string(buffer, state->total_bytes - read_buffer.size()));
+        }
+        // Data length known
+        else {
+            if (read_buffer.size() + bytes_read >= message_length) {
+                read_buffer.append(buffer, message_length - read_buffer.size());
             } else {
-                state->buffer = std::string(read_buffer + std::string(buffer, bytes_read));
+                read_buffer.append(buffer, bytes_read);
             }
         }
     }
 
-    if (state->buffer.size() == state->total_bytes) {
+    if (read_buffer.size() == message_length) {
         Valt& valt = Valt::getInstance();
-        spdlog::info("{}", state->buffer);
-        std::string response = valt.execute(state->buffer, watcher->fd);
+        std::string response = valt.execute(read_buffer, watcher->fd);
         WatcherState* write_state = c->write_state.get();
         write_state->buffer = std::move(utils::length_prefixed(response));
-        write_state->total_bytes = 0;
+        write_state->message_length = 0;
         c->start_write_watcher(client_write_cb);
         c->reset_state(c->read_state.get());
     }

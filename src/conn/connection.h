@@ -9,7 +9,7 @@
 
 struct WatcherState {
     std::string buffer;
-    uint32_t total_bytes;
+    uint32_t message_length;
 };
 
 struct Connection {

@@ -5,7 +5,7 @@ TabWidth: 4
 UseTab: Never
 
 # Line wrapping
-ColumnLimit: 100
+ColumnLimit: 120
 BreakBeforeBraces: Attach
 AllowShortFunctionsOnASingleLine: InlineOnly
 AllowShortIfStatementsOnASingleLine: true

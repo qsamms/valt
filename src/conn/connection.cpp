@@ -39,7 +39,7 @@ void Connection::add_to_queue(const std::string& s) {
 
 void Connection::reset_state(WatcherState* state) {
     state->buffer.clear();
-    state->total_bytes = 0;
+    state->message_length = 0;
 }
 
 void Connection::start_write_watcher(void (*callback)(struct ev_loop*, ev_io*, int)) {
