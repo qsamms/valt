@@ -21,6 +21,7 @@ endif()
 add_executable(
     valt
     src/main.cpp 
+    src/conn/connection.cpp
     src/net/network_layer.cpp
     src/valt/valt.cpp
     src/db/database_mixin.cpp
