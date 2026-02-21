@@ -3,8 +3,7 @@
 #include <net/network_layer.h>
 #include <utils/exceptions.h>
 
-PermissionsMixin::PermissionsMixin(const ValtConfig* cfg)
-    : valt_config(cfg), authentication_enabled(true) {
+PermissionsMixin::PermissionsMixin(const ValtConfig* cfg) : valt_config(cfg), authentication_enabled(true) {
     if (char* key = std::getenv("VALT_MASTER_KEY"); key != nullptr) {
         master_key = std::string(key);
     }

@@ -31,8 +31,7 @@ int main(int argc, char* argv[]) {
     app->add_option("--cert-file", cfg.cert_path, "File path to TLS certificate");
     app->add_option("--key-file", cfg.private_key, "File path to TLS private key");
     app->add_option("--max_connections", cfg.max_connections, "Max connections");
-    app->add_option("--max_pending_connections", cfg.max_pending_connections,
-                    "Max pending connections");
+    app->add_option("--max_pending_connections", cfg.max_pending_connections, "Max pending connections");
     app->add_option("--max-memory", cfg.max_memory, "Max memory");
     app->add_flag("--no-auth", cfg.no_auth, "Disable authentication");
     app->set_version_flag("--version", "0.1.0");

@@ -36,18 +36,17 @@ struct Request {
     int64_t expiration;
 };
 
-const std::unordered_map<std::string, Operation> op_mapping = {
-    {"authenticate", Operation::AUTHENTICATE},
-    {"evict", Operation::EVICT},
-    {"get", Operation::GET},
-    {"set", Operation::SET},
-    {"setex", Operation::SETEX},
-    {"persist", Operation::PERSIST},
-    {"expire", Operation::EXPIRE},
-    {"delete", Operation::DELETE},
-    {"flush", Operation::FLUSH},
-    {"subscribe", Operation::SUBSCRIBE},
-    {"unsubscribe", Operation::UNSUBSCRIBE},
-    {"publish", Operation::PUBLISH},
-    {"create_queue", Operation::CREATE_QUEUE},
-    {"delete_queue", Operation::DELETE_QUEUE}};
+const std::unordered_map<std::string, Operation> op_mapping = {{"authenticate", Operation::AUTHENTICATE},
+                                                               {"evict", Operation::EVICT},
+                                                               {"get", Operation::GET},
+                                                               {"set", Operation::SET},
+                                                               {"setex", Operation::SETEX},
+                                                               {"persist", Operation::PERSIST},
+                                                               {"expire", Operation::EXPIRE},
+                                                               {"delete", Operation::DELETE},
+                                                               {"flush", Operation::FLUSH},
+                                                               {"subscribe", Operation::SUBSCRIBE},
+                                                               {"unsubscribe", Operation::UNSUBSCRIBE},
+                                                               {"publish", Operation::PUBLISH},
+                                                               {"create_queue", Operation::CREATE_QUEUE},
+                                                               {"delete_queue", Operation::DELETE_QUEUE}};

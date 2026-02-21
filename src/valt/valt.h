@@ -17,10 +17,7 @@ class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
 
     Valt() = delete;
     Valt(const ValtConfig* valt_config)
-        : cfg(valt_config),
-          PermissionsMixin(valt_config),
-          DataBaseMixin(valt_config),
-          PubSubMixin(valt_config) {}
+        : cfg(valt_config), PermissionsMixin(valt_config), DataBaseMixin(valt_config), PubSubMixin(valt_config) {}
     ~Valt() = default;
 
     Valt(const Valt&) = delete;
