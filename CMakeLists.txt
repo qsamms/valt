@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(spdlog REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(PkgConfig REQUIRED)
+find_package(CLI11 REQUIRED)
 
 pkg_check_modules(JEMALLOC REQUIRED jemalloc)
 

@@ -10,3 +10,12 @@ test-python:
 .PHONY: clean
 clean:
 	rm -rf build/ venv valt.out
+
+.PHONY: build-docker
+build-docker:
+	docker build -t valt:latest .
+
+.PHONY: build
+build:
+	mkdir -p build
+	cd build && cmake .. && make -j$(nproc)
