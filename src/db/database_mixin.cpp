@@ -49,31 +49,33 @@ void DataBaseMixin::unlink(DBNode* node) {
 }
 
 std::string DataBaseMixin::set(const Request& req) {
-    if (!db.contains(req.key)) {
-        ValtState* vs = ValtState::getInstance();
-        std::lock_guard<std::mutex> lck(vs->mem_mtx);
-        size_t mem_used = vs->memory_used;
+    ValtState* vs = ValtState::getInstance();
+    std::lock_guard<std::mutex> lck(vs->mem_mtx);
+    size_t mem_used = vs->memory_used;
 
+    if (!db.contains(req.key)) {
         std::unique_ptr<DBNode> newNode = std::make_unique<DBNode>();
         newNode->expiration = req.expiration;
         newNode->value = req.value;
         newNode->key = req.key;
         move_to_front(newNode.get());
         db[req.key] = std::move(newNode);
-
         mem_used + sizeof(DBNode) + newNode->value.capacity() + newNode->key.capacity();
-        if (valt_config->max_memory > 0) {
-            while (head.get()->next != tail.get() && mem_used > valt_config->max_memory) {
-                DBNode* lru = tail->prev;
-                mem_used -= sizeof(DBNode) + lru->key.capacity() + lru->value.capacity();
-                remove_node(tail->prev);
-            }
-        }
     } else {
         DBNode* node = db[req.key].get();
+        mem_used -= node->value.capacity();
         node->value = req.value;
         node->expiration = req.expiration;
         move_to_front(node);
+        mem_used += node->value.capacity();
+    }
+
+    if (valt_config->max_memory > 0) {
+        while (head.get()->next != tail.get() && mem_used > valt_config->max_memory) {
+            DBNode* lru = tail->prev;
+            mem_used -= sizeof(DBNode) + lru->key.capacity() + lru->value.capacity();
+            remove_node(tail->prev);
+        }
     }
     return OK;
 }
