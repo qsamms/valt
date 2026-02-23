@@ -8,17 +8,26 @@
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "valt_config.h"
 
 class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
    private:
+    std::thread bg_mem_update;
+    std::atomic<bool> stop;
     const ValtConfig* cfg;
 
     Valt() = delete;
     Valt(const ValtConfig* valt_config)
-        : cfg(valt_config), PermissionsMixin(valt_config), DataBaseMixin(valt_config), PubSubMixin(valt_config) {}
-    ~Valt() = default;
+        : cfg(valt_config), PermissionsMixin(valt_config), DataBaseMixin(valt_config), PubSubMixin(valt_config) {
+        stop.store(false);
+        bg_mem_update = std::thread(&Valt::update_memory_in_bg, this);
+    }
+    ~Valt() {
+        stop.store(true);
+        bg_mem_update.join();
+    }
 
     Valt(const Valt&) = delete;
     Valt& operator=(const Valt&) = delete;
@@ -28,6 +37,7 @@ class Valt : public PermissionsMixin, DataBaseMixin, PubSubMixin {
     Request parseRequest(const std::string&);
     int64_t parseExpiration(const std::string&);
     std::string performRequest(const Request&);
+    void update_memory_in_bg();
 
    public:
     std::string execute(const std::string&, const int& client_fd);

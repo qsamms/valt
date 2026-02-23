@@ -1,6 +1,7 @@
 #include "valt.h"
 
 #include <db/database_mixin.h>
+#include <jemalloc/jemalloc.h>
 #include <utils/exceptions.h>
 #include <utils/utils.h>
 
@@ -8,7 +9,26 @@
 #include <regex>
 #include <vector>
 
+#include "spdlog/spdlog.h"
+#include "valt_state.h"
+
 const std::regex int_re(R"(^[+-]?\d+$)");
+
+void Valt::update_memory_in_bg() {
+    while (1) {
+        if (stop.load()) return;
+
+        uint64_t epoch = 1;
+        size_t sz = sizeof(epoch);
+        mallctl("epoch", &epoch, &sz, &epoch, sz);
+
+        ValtState* vs = ValtState::getInstance();
+
+        std::lock_guard<std::mutex> lck(vs->mem_mtx);
+        mallctl("stats.resident", &vs->memory_used, &sz, NULL, 0);
+        sleep(1);
+    }
+}
 
 std::string Valt::execute(const std::string& request_string, const int& client_fd) {
     try {

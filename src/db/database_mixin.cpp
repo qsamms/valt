@@ -1,5 +1,7 @@
 #include "database_mixin.h"
 
+#include <valt/valt_state.h>
+
 DataBaseMixin::DataBaseMixin(const ValtConfig* cfg) {
     valt_config = cfg;
     db = std::unordered_map<std::string, std::unique_ptr<DBNode>>();
@@ -48,6 +50,16 @@ void DataBaseMixin::unlink(DBNode* node) {
 
 std::string DataBaseMixin::set(const Request& req) {
     if (!db.contains(req.key)) {
+        if (valt_config->max_memory > 0) {
+            ValtState* vs = ValtState::getInstance();
+            std::lock_guard<std::mutex> lck(vs->mem_mtx);
+            size_t mem_used = vs->memory_used;
+            while (head.get()->next != tail.get() && mem_used > valt_config->max_memory) {
+                DBNode* lru = tail->prev;
+                mem_used -= sizeof(DBNode) + lru->key.capacity() + lru->value.capacity();
+                remove_node(tail->prev);
+            }
+        }
         std::unique_ptr<DBNode> newNode = std::make_unique<DBNode>();
         newNode->expiration = req.expiration;
         newNode->value = req.value;

@@ -4,6 +4,7 @@
 #include <openssl/err.h>
 #include <utils/utils.h>
 #include <valt/valt.h>
+#include <valt/valt_state.h>
 
 #include "spdlog/spdlog.h"
 
@@ -11,8 +12,8 @@
 #define MAX_MESSAGE_LENGTH_BYTES 67108864  // 64MB
 
 std::unordered_map<int, std::unique_ptr<Connection>>& get_connections() {
-    static std::unordered_map<int, std::unique_ptr<Connection>> conns;
-    return conns;
+    ValtState* vs = ValtState::getInstance();
+    return vs->get_connections();
 }
 
 void pubsub_write_cb(EV_P_ ev_io* watcher, int revents) {
